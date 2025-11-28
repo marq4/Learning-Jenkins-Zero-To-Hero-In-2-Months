@@ -1,0 +1,4 @@
+* Task: build and test a real Java app with Maven: 
+	+ GitHub repo: https://github.com/jglick/simple-maven-project-with-tests.git 
+	+ Run: Maven clean package, ignore test failures. 
+	+ Record test results and archive the jar artifacts. 

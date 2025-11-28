@@ -1,0 +1,32 @@
+* Notes: 
+	+ This challenge is CONSIDERABLY more laborious than the previous ones. 
+	+ May take you multiple hours, days even. 
+
+* What we'll learn/practice: 
+	+ Basic Docker commands: 
+		- Creating a new container, specifying port mappings. 
+		- Stopping / starting an existing container. 
+		- Connecting to a running container as root user. 
+	+ SSH: 
+		- GitHub Deploy Key. 
+		- ssh-keygen. 
+		- ssh-keyscan. 
+	+ Fundamental Git workflow: 
+		- Create a new repo. 
+		- Cloning an empty repo. 
+		- Adding and uploading code to the repo. 
+		- Making changes to code. 
+		- Working on a new branch. 
+	+ Jenkins / Groovy: 
+		- Difference between implict and explicit code checkout. 
+		- Intermediate declarative pipeline directives: 
+			' Parameters. 
+			' Environment variables. 
+			' Code check-out. 
+		- Defining a Groovy variable. 
+		- Groovy conditionals. 
+	+ Python: 
+		- Installing it. 
+		- Working with virtual environments. 
+		- Installing project dependencies (requirements file). 
+		- Pytest module & JUnit plugin. 

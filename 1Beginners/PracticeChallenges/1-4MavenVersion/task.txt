@@ -1,0 +1,1 @@
+* Task: create a Pipeline project (declarative) that displays a version of Maven installed. 

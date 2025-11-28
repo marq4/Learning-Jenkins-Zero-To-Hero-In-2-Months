@@ -1,0 +1,111 @@
+// Declarative.
+pipeline {
+  agent any
+
+  environment {
+    TEST_REPORT = "reports/test-results.xml"
+    TIMEOUT_RETURN_CODE = "124"
+  }
+
+  parameters {
+    string(name: "BRANCH_NAME", defaultValue: "main", 
+      description: "Branch to build: ")
+    booleanParam(name: "RUN_TESTS", defaultValue: true,
+      description: "Run tests?")
+  }
+
+  stages {
+    
+    stage('Display message') {
+      steps {
+        echo "Jenkins has been able to find this file and run this pipeline! "
+      }
+    }
+
+    stage('Info') {
+      steps {
+        echo "Parameter values: "
+        echo "Branch: ${params.BRANCH_NAME}. "
+        echo "Run tests: ${params.RUN_TESTS}. "
+      }
+    }
+
+    stage('List files at root level') {
+      steps {
+        sh '''
+          pwd
+          ls -A
+        '''
+      }
+    }
+
+    stage('Python version') {
+      steps {
+        sh ' python --version '
+      }
+    }
+
+    stage('List files under code subfolder') {
+      steps {
+        dir("Python-App") {
+          sh ' ls -A '
+        }
+      }
+    }
+
+    stage('Create virtual environment') {
+      steps {
+        dir("Python-App") {
+          sh ' python -m venv venv '
+        }
+      }
+    }
+
+    stage('Install dependencies') {
+      steps {
+        dir("Python-App") {
+          sh '''
+            ./venv/bin/python -m pip install --upgrade pip
+            ./venv/bin/python -m pip install -r requirements.txt
+          '''
+        }
+      }
+    }
+
+    stage('Testing (optional)') {
+      when { expression { params.RUN_TESTS } }
+      steps {
+        dir("Python-App") {
+          echo "Running tests... "
+          sh " ./venv/bin/python -m pytest -vvv --junitxml=${TEST_REPORT} "
+        }
+      }
+      post {
+        always {
+          junit "Python-App/${TEST_REPORT}"
+        }
+      }
+    }
+
+    stage('Run app') {
+      steps {
+        dir("Python-App") {
+          echo "Running app for 1 minute... "
+          script {
+            def result = sh(script: 'timeout 60s ./venv/bin/python app.py',
+              returnStatus: true)
+            if (result == env.TIMEOUT_RETURN_CODE.toInteger()) {
+              echo "Complete: app ran successfully. "
+            } else if (result != 0) {
+              error("App failed with exit code: ${result}. ")
+            } else {
+              echo "App completed successfully before timeout. "
+            }
+          }
+        }
+      }
+    }
+
+  }
+
+}

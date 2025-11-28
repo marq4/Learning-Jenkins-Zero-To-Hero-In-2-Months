@@ -1,0 +1,133 @@
+* Solution: 
+	1.- Create a private GitHub repo and upload the code.  
+		1.1.- Create folder structure: <USER>/REPO/Jenkins/ and open Git Bash there. 
+		1.2.- On the empty GitHub repo page under Quick setup copy the .git URL. 
+		1.3.- Clone the empty repo locally: 
+			$ git clone <URL> 
+		1.4.- Verify this is an empty repo: 
+			$ ls -A 			// You should see ".git" hidden folder. 
+		1.5.- Copy the Python-App folder over. 
+		1.6.- Confirm new files get noticed by git: 
+			$ git status 		// You should see Python-App/ under "Untracked files". 
+		1.7.- Ask git to track the Python app code: 
+			$ git add Python-App/ 
+		1.8.- Confirm changes are staged: 
+			$ git status 		// You should see 2 .py 1 .txt. 
+		1.9.- Commit all tracked changes to local repo: 
+			$ git commit -am "Initial Python code commit. " 
+		1.10.- Upload to GitHub: 
+			$ git push 
+	2.- Create initial minimal Jenkinsfile (version 1): 
+		2.1.- Declarative (pipeline). 
+		2.2.- Run on any agent. 
+		2.3.- Single stage: display message (stages, stage, steps, echo). 
+	3.- Create the Jenkins project (Docker): 
+		3.1.- Create a new Jenkins container (or reuse from previous challenge): 
+			+ Start Docker Desktop. 
+			+ Confirm Docker is running: 
+				$ docker info 
+			+ Run a new Jenkins container with additional port mappings: 
+				$ docker stop jenkins-controller-container 
+				$ docker rm jenkins-controller-container 
+				$ docker run -d -p 8080:8080 -p 5000:5000 -p 3001:3001 -v C:/Jenkins/Learning-Jenkins-Zero-To-Hero-In-2-Months/Docker_Jenkins_Home:/var/jenkins_home --name jenkins-controller-container jenkins/jenkins:lts 
+			+ Take note of the first few letters/numbers of the returned container id (e.g. in my case: 6902a56e9ea9a86ef041a634bcc368f8e8a3833a87fa6dc4b3a938b5c22c401e -> 69). From now on I can refer to the container with just "69". 
+			+ Verify container is running: 
+				$ docker ps 
+		3.2.- Get inital admin password: 
+			$ docker logs 69 
+		3.3.- Go to localhost:8080 on your web browser (such as FireFox). 
+		3.4.- Unlock Jenkins, install suggested plugins, optional: select dark theme (Manage Jenkins > Appearance > Theme > Dark > Save). 
+		3.5.- New Item > PythonApp > Pipeline. 
+		3.6.- Pipeline script from SCM. 
+			+ SCM: Git. 
+			+ Repository URL: // Copy-paste the git@github.com SSH .git URL from GitHub. 
+			+ Branch Specifier: */main 
+			+ Script Path: Jenkinsfile.1 
+			+ Save. 
+		3.7.- Configure credentials so local Jenkins (on Docker) can read the GitHub repo: 
+			+ Create GitHub Deploy Key: 
+				- Connect to the container: 
+					$  winpty docker exec -it 69 bash 
+				- Generate a key: 
+					$ ssh-keygen -t ed25519 -C "jenkins-deploy-key" -f ~/.ssh/jenkins_deploy_key 
+				- Go to GitHub repo > Settings > Deploy keys > Add deploy key. 
+				- Name: jenkins_deploy_key. 
+				- Paste contents of public key (.pub) > Add key. 
+			+ Add private key to Jenkins: 
+				- Manage Jenkins > Credentials > Global > Add credentials > SSH Username with private key. 
+				- Username: git. 
+				- Private Key: paste contents of jenkins_deploy_key. 
+				- ID: github-ssh-key. 
+			+ Add GitHub to Jenkins' known hosts: 
+				$ ssh-keyscan github.com >> /var/jenkins_home/.ssh/known_hosts 
+			+ Go back to the PythonApp project in the Jenkins UI > Configure > Choose the credentials. 
+	4.- Push Jenkinsfile.1 to GitHub. 
+	5.- Build Now. 		// You should see: [Pipeline] echo Jenkins has been able to find this file and run this pipeline! 
+		+ At this point, Jenkins is performing an implicit code checkout with the Repo URL, Credentials, and Branch Specifier defined at the project level. 
+	6.- Next: install & verify Python and make sure files are there: 
+		6.1.- Copy the current Jenkinsfile to version 2: 
+			$ cat Jenkinsfile.1 > Jenkinsfile.2 
+		6.2.- Add 3 stages: 
+			+ List files at root. 
+			+ Get Python version. 
+			+ List files under Python-App subfolder. 
+		6.3.- Update "Script Path" in the Jenkins project to be: Jenkinsfile.2 
+		6.4.- Install Python in the container: 
+			+ Connect to the container as root user: 
+				$ winpty docker exec -it -u root 69 bash 
+			+ Update the packages and install Python via apt: 
+				$ apt update && apt install python3 
+			+ Verify instalation: 
+				$ python3 --version 
+			+ Set "python" to be an alias of "python3": 
+				$ update-alternatives --install /usr/bin/python python /usr/bin/python3 1 
+			+ Confirm: 
+				$ python --version 
+			+ Exit the container: 
+				$ exit 
+		6.5.- Add-Commit-Push version 2 of Jenkinsfile and Build the project. 
+	7.- Next: create a virtual environment and install the Python project's dependencies: 
+		7.1.- Add 2 new stages to Jenkinsfile.3: 
+			+ Create virtual env. 
+			+ Install dependencies. 
+		7.2.- Add-Commit-Push version 3 of Jenkinsfile and Build the project. 
+			+ It should fail with: ensurepip is not available. 
+		7.3.- Connect to the container as root again and install the suggested venv package. 
+			+ Example: $ apt install python3.11-venv 
+	8.- Next: run tests if RUN_TESTS is true: 
+		8.1.- Add to Jenkinsfile version 4: 
+			+ TEST_REPORT env var to avoid duplicating its location & name: reports/test-results.xml. 
+			+ The 2 parameters: BRANCH_NAME, RUN_TEST. 
+			+ A conditional stage: Testing. 
+			+ An info stage to display the values of the parameters. 
+		8.2.- "Build Now" (with default values). 
+		8.3.- Now when you reload the Jenkins project page, you'll see: 
+			+ "Test Result Trend" from JUnit plugin. 
+			+ "Build with Parameters" button has replaced "Build Now". 
+	9.- Finally: run the app for 1 minute: 
+		9.1.- Add to Jenkinsfile version 5: 
+			+ TIMEOUT_RETURN_CODE  env var with value "124" (env vars are strings anyway). 
+			+ Last stage: run app. 
+		9.2.- See the app running on: 127.0.0.1:3001 		// Hello, Jenkins Pipeline with Python! 
+	10.- Verify tests are skipped when RUN_TESTS is false. 
+	11.- Verify with a new branch: 
+		11.1.- Update Jenkinsile (final version): 
+			+ Add stage for explicit SCM checkout. 
+			+ Push to main branch. 
+		11.2.- Create a new branch (local): 
+			$ git checkout -b dev 
+		11.3.- Verify it is selected: 
+			$ git branch 
+		11.4.- Update the app and test so that the message ends with "!!!". 
+		11.5.- Verify both files were updated: 
+			$ git status 
+		11.6.- Add them to staging area: 
+			$ git add -A 
+		11.7.- Create a new commit: 
+			$ git commit -am "Dev branch." 
+		11.8.- Upload to GitHub: 
+			$ git push 			// Git will complain that current branch has no upstream and will suggest the command: git push --set-upstream origin dev 
+		11.9.- Jenkins > Build with Parameters > BRANCH_NAME: dev. 
+		11.10.- While app is running connect to the container and access it (or visit the URL if port 3001 was exposed): 
+			+ winpty docker exec -it 70 bash 
+			+ curl http://127.0.0.1:3001 		// You should see: Hello, Jenkins Pipeline with Python!!! 

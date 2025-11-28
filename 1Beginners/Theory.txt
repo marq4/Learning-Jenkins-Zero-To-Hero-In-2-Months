@@ -1,0 +1,227 @@
+// WHY even bother dealing with Jenkins (and similar tools) in the first place? 
+* Problem statement: 
+	+ Team suffers because SW releases carry a ton of risk, manual testing, manual deployment. 		// SoftWare. 
+
+* Requirements: 
+	+ Adopt SCM tool for version control + better team collaboration. 					// Source Code Management. 
+	+ Implementation of Unit Testing + Code Coverage to minimize bugs. 
+	+ Use Docker Build + Push processes (containerization). 
+	+ Deploy to K8 (and maybe even acceptance testing). 						// K8: Kubernetes. 
+	+ Automated Integration Testing. 
+
+* Manager chooses Jenkins as the CI tool because: 							// Continuous Integration. 
+	+ It's Open-Source. 
+	+ High customization via massive plugin library. 
+	+ Active community. 
+	// Honestly because it's free though.  
+
+
+* SCM: Source Code Management System / VCS: Version Control System. 
+	+ Seamless collaboration. 
+	+ Code reviews. 
+	+ Conflict resolution. 
+	+ Effortless sharing. 
+	+ Track changes. 
+	+ Rollback ready. 
+
+* CICD basics: 
+	+ Continuous Integration: 
+		- Code in MAIN branch is deployed to PROD. 
+		- Feature branches enable devs to work on a new feature until it's complete. 
+		- The code is committed to the feature branch and a Pull Request is initiated. 
+		- Changes are reviewed. 
+		- Automated CI pipeline is triggered: 
+			' Unit Testing. 
+			' Dependency Scan. 
+			' Build Artifacts. 
+			' Code Scanning. 		// For (security) vulnerabilities. 
+		- Code is merged into MAIN branch. 
+		- Same or additional checks performed to make sure MAIN branch works with multiple feature branches merged into it.
+	+ Continuous Deployment/Delivery:
+		1.- Deploy feature branch to STAGING for live testing. 
+		2.- Manual approval. 
+		3.- Smoke test. 
+		4.- Deploy to PROD. 
+
+
+
+__ Jenkins __ 
+
+* OSS Automation Server that accelerates SW dev. 					// Open-Source SoftWare. 
+* Orchestrates the entire SW deliver pipeline, from: building & testing, to deployment. 
+* Automate CI/CD: Building, Unit Testing, Linting, Dockerizing, Security assessment, Deployment, (Other) Tests (Acceptance, Integration). 
+
+* Core concepts: 
+	+ Job: 
+		- The building blocks of the Pipeline. 
+		- Defines a specific task such as compiling code, running tests, or deploying to an environment. 
+	+ Build: 
+		- Each execution of a job. 
+		- Jenkins maintains a Build history. 
+	+ Freestyle Project: 
+		- The default project type. 
+		- Offers flexible job definitions. 
+	+ Pipeline: 
+		- Automated workflow that orchestrates jobs from code build to deployment. 
+		- Defined as code in a Jenkinsfile allowing for version control and collaboration. 			// Jenkinsfile is simply a text file that contains Groovy code with no extention. Can actually be called anything. Usually: Jenkinsfile.1, Jenkinsfile.latest, JenkinsfileCodeQuality, Jenkinsfile-Release. 
+	+ Stage: 
+		- Within a Pipeline, we can group related jobs into Stages for clarity. 
+		- E.g.: Build, Test, Deploy. 
+	+ Nodes: 
+		- The machine where Jenkins executes jobs. 
+		- Single controller or distributed across multiple Agents. 
+	+ Plugins: 
+		- Extensions that expand Jenkins' functionality. 
+		- Allow seamless integration with tools and technologies. 
+
+* Architecture: distributed. 
+	+ Controller: 
+		- Plugins, jobs, nodes, credentials, configurations. 
+		- Management tasks. 
+		- Job management. 
+		- Web UI. 
+		- Can be also worker for basic setup. 
+	+ Node: 
+		- Workers. Execute Build jobs. 
+		- Connect to controller via SSH | JNLP. 
+		- 1 or + executors. 
+	+ Executors: 
+		- Slots for running jobs concurrently. 
+		- Thread for execution of tasks. 
+	+ Agent: 
+		- Extension of Jenkins managing the task execution. 
+		- Defines the communication protocol & auth with Controller. 
+	+ Docker containers: can also be Build Agents. 
+	+ K8 clusters: can be used to dynamically provision & manage Build Agents as pods. 
+
+* SW requirements: 
+	+ JDK: Java Development Kit | 
+	+ JRE: Java Runtime Environment. 
+
+* Installation & running it:
+	+ Any OS by running the Generic Java package: .war. 
+	+ OS-specific packages. 
+	+ Cloud templates. 
+	+ Docker image. 							// Recommended for learning. Is what I use in this course. 
+
+* Post-installation: 
+	+ $ echo $JENKINS_HOME 						// Usually: /var/lib/jenkins/ 
+	+ Regularly backup that folder. 
+
+* Types of Projects: 
+	+ Freestyle: most basic and flexible.  
+	+ Pipeline: as Code. Includes stages, steps, and conditions. 
+	+ Multibranch Pipeline: from multiple branches from a single code repo. 
+	+ Maven: for Java. 
+	+ Multi-configuration: same project, different configs. 
+	+ Organization Folders: organize Jenkins projects in a hierarchical structure. 
+
+* Plugins:
+	+ Examples of functionality provided: 
+		- Source Code Management: git, GitHub, Bitbucket. 
+		- Build: Maven, Gradle. 
+		- Quality Checks: code coverage, static analysis. 
+		- Notifications: Slack. 
+		- Cloud: AWS. 
+	+ Jar files. Formats: .hpi (Hudson Plugin) (legacy), .jpi (Jenkins Plugin). 
+	+ Stored in $JENKINS_HOME/plugins. 
+
+
+* Pipelines: 
+	+ Defined using a script called Jenkinsfile, written in Groovy. 
+	+ Basic example:
+		pipeline {
+			agent any
+			stages {
+				stage('Build') {
+					steps {
+						sh 'mvn build'
+					}
+				}
+				stage('Unit Test') {
+					steps {
+						sh 'mvn test'
+					}
+				}
+				stage('Dockerize') {
+					steps {
+						// Not shown: Docker Hub credentials. 
+						sh 'docker build -t imageName:version .' 
+						sh 'docker push imageName:version' 
+					}
+				}
+				stage('Deploy') {
+					steps {
+						sh 'kubectl apply -f deployment.yaml'
+					}
+				}
+			}
+		}
+	+ Stages group related steps that perform a specific task. 
+	+ Types: 
+		- Scripted: complex logic. Flexible. 
+		- Declarative: simpler. 
+
+* Freestyle VS Pipeline:
+	+ Sequential order of steps 		; 	Stages allow parallel task execution. 
+	+ Configured via web UI		; 	Jenkinsfile supports version control. 
+
+* Jenkinsfile Directives: 
+	+ environment: defines key-value pairs to set env vars. 
+	+ post: executes 1 or more steps after pipeline finishes. 
+		- success. 
+		- failure. 
+		- always. 
+	+ script: encapsulate a block of Groovy code for more complex logic. 
+	+ when: define conditions for a stage to be executed. 
+	+ withCredentials: provides access to pre-defined credentials stored in Jenkins. 
+	+ input: allows users to provide input through a UI. 
+		- input {
+			message 'Confirm deploy to DEV: '
+			ok 'Yes'
+			cancel 'No'  
+		}
+	+ parameters: define params that can be passed to Pipeline during execution, allowing for dynamic config. 
+	+ stash/unstash: store/retrieve artifacts between stages or jobs running on different Nodes. 
+	+ parallel: execute multiple stages concurrently. 
+
+
+* Automation: 
+	+ Jenkins offers 2 options for automating Jenkins tasks: 
+		- Jenkins CLI: 
+			' Access over: 
+				` SSH: disabled by default: 		$ curl -Lv https://JENKINS_URL/login 2>&1 | grep -i 'x-ssh-endpoint' 	# Returns randomly-assigned port.  
+					; Get available commands: 	$ ssh -l user -p 55640 localhost help 
+					; Build a job: 		$ ... build hello-world -f -v 
+				` Client (jar): 
+					; Get available commands: 	$ java -jar jenkins-cli.jar -s http://IP:8080 -webSocket help 
+					; List jobs: 		$ ... -auth user:token list-jobs 
+		- Jenkins REST API. 
+
+* Example: install "emotional-jenkins" plugin from a shell using the REST API: 
+	+ Go to Admin user > Configure > API Token > create a new one and copy the value. 
+	+ $ curl -u admin:<TOKEN> \
+		-X POST http://<JENKINS_URL>:8080/pluginManager/installNecessaryPlugins \
+		-H 'Content-Type: text/xml' \
+		-d '<jenkins><install plugin="emotional-jenkins-plugin@1.2" /></jenkins>'  
+
+* Security: 
+	+ AutheNtication VS AuthoriZation: 
+		- When the receptionist asks you WHO you are, you tell them your name. N: name, authN. 
+		- You are then given a key "Z" to access your room: authZ. 
+	+ In Jenkins: 
+		- AuthN: 						// Who can access it. 
+			// Built-in: 
+			' Jenkins user DB (default). 
+			' UNIX user/group. 
+			' Servlet Container Security. 
+			' External LDAP. 
+			// Plugins: 
+			' Active Directory (MS AD). 
+			' SAML 2.0 SSO. 
+		- AuthZ: 						// What actions "user" can perform. 
+			' Resource: task, object, action. 
+			' Role: collection of related permissions. 
+			' Requester: user or group trying to access a resource, assigned one or more roles. 
+	+ Always grant the least necessary access. 
+	+ For fine-grained control access: install this plugin: Matrix Authorization Strategy. 

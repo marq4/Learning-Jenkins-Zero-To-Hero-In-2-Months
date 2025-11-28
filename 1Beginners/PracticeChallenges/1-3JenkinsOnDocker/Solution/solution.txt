@@ -1,0 +1,12 @@
+* Solution: 
+	1.- Install Docker Desktop. 
+	2.- Start it. 
+	3.- Verify it's running: 	$ docker version 
+	4.- Get latest LTS image:	$ docker pull jenkins/jenkins:lts 
+	5.- Run it: 		$ docker run -d -p 8080:8080 -p 5000:5000 -v C:/Jenkins/Learning-Jenkins-Zero-To-Hero-In-2-Months/Docker_Jenkins_Home:/var/jenkins_home --name jenkins-controller-container jenkins/jenkins:lts 
+	6.- Get the initial passw: 	$ docker logs jenkins-controller-container | grep -i passw 
+	7.- Access the web UI: 	http://localhost:8080/
+	8.- Activate it. 
+	9.- Install recommended plugins. 
+	10.- Create First Admin User. 
+	11.- Create a job > hello-world > Freestyle > Test Jenkins Controller in a Docker container. > Build Steps  > Execute shell > echo "Hello Jenkins (Docker)!" > Save > Build Now. 

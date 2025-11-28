@@ -1,0 +1,5 @@
+* Task: 
+	+ Create a Jenkins Pipeline for the given Python project (Python-App). 
+
+* Specifications: 
+	+ Allow user to specify desired branch to build and whether to run or skip tests. 

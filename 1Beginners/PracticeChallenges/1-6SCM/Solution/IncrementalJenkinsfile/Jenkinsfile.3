@@ -1,0 +1,57 @@
+// Declarative.
+pipeline {
+  agent any
+
+  stages {
+    
+    stage('Display message') {
+      steps {
+        echo "Jenkins has been able to find this file and run this pipeline! "
+      }
+    }
+
+    stage('List files at root level') {
+      steps {
+        sh '''
+          pwd
+          ls -A
+        '''
+      }
+    }
+
+    stage('Python version') {
+      steps {
+        sh ' python --version '
+      }
+    }
+
+    stage('List files under code subfolder') {
+      steps {
+        dir("Python-App") {
+          sh ' ls -A '
+        }
+      }
+    }
+
+    stage('Create virtual environment') {
+      steps {
+        dir("Python-App") {
+          sh ' python -m venv venv '
+        }
+      }
+    }
+
+    stage('Install dependencies') {
+      steps {
+        dir("Python-App") {
+          sh '''
+            ./venv/bin/python -m pip install --upgrade pip
+            ./venv/bin/python -m pip install -r requirements.txt
+          '''
+        }
+      }
+    }
+
+  }
+
+}

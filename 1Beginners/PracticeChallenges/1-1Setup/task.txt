@@ -1,0 +1,6 @@
+* Task: get Jenkins up and running on a fresh EC2 instance. 
+
+* Prerequisites: 
+	+ A credit card. 
+	+ An AWS account. 
+	+ A SSH key pair for EC2. 

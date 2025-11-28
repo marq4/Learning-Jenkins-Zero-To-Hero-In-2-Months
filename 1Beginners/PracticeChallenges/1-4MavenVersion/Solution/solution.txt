@@ -1,0 +1,23 @@
+* Solution: 
+	1.- Start the container: 		$ docker start jenkins-controller-container 
+	2.- Access Jenkins web UI: 		http://localhost:8080/
+	3.- New Item > Get-Maven-Version > Pipeline > Do not allow pipeline to resume if controller restarts > Pipeline script > GitHub + Maven. 
+	4.- Edit pipeline definition: 
+pipeline {
+    agent any
+
+    tools {
+        // Install the Maven version configured as "M3" and add it to the path.
+        maven "M3"
+    }
+
+    stages {
+        stage('Display Maven version') {
+            steps {
+                sh "mvn -version"
+            }
+        }
+    }
+}
+	5.- Configure Maven: Tools > Add Maven > "M3", Install Automatically from Apache. 
+	6.- Build Now. 

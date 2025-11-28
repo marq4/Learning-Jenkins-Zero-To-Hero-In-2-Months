@@ -7,3 +7,5 @@ These are my notes, DevOps interview cheat sheet, and practice challenges (+ sol
 * Jenkins Project: Building CI/CD Pipeline for Scalable Web Applications (final project). 
 
 Instructors: Barahalikar Siddharth, Sanjeev Thiyagarajan. 
+
+The solutions to the practice challenges assume you clone this repo under C:/Jenkins/.

@@ -1,0 +1,73 @@
+* Recommendations: 
+	+ To avoid frustration, adopt an incremental approach. 
+	+ Keep adding to the Jenkinsfile, making sure it works stage by stage. 
+	+ Suggested stages: 
+		- Info: display the values of the params/env vars. 
+		- SCM: to checkout the branch. 
+		- Python version. 
+		- Create venv. 
+		- Install requirements with pip module. 
+		- Testing. 
+		- Run app.
+
+* Tips + best practices + notes: 
+	+ To display a message in a pipeline, echo step can be used directly (no need for "script" step). 
+	+ If you want to be able to SEE the app running in your browser, include this port mapping when creating the container:
+		-p 3001:3001 
+	+ The default Jenkins home in the official Docker image is: /var/jenkins_home/. 
+	+ Single-line comments in Jenkinsfile start with: // 
+	+ Multi-line comments in Jenkinsfile are wrapped around: /*  */ 
+	+ The best way for Jenkins to be able to talk to GitHub is through a "GitHub Deploy Key". 
+	+ For Jenkins to be able to read a repo on GitHub this is required: 
+		- SCM > Repository URL must be the SSH URL. 
+		- An SSH key pair must be generated in the container. 
+		- A Deploy Key must be defined under the repo settings (public side of the key pair). 
+		- The private side of the key pair must be added to Jenkins credentials. 
+		- GitHub must be added to known hosts inside the container. 
+		- The appropiate credentials must be selected in the Jenkins project under SCM section. 
+	+ Configuring Python in Jenkins as a "tool" has some limitations: 
+		- The built-in tools directive works for: Maven, JDK, Gradle, Ant, Git. 
+		- Python is not natively supported by Jenkins. 
+		- We'd need the ShiningPanda plugin, which is: 
+			' Outdated. 
+			' Not well-maintained. 
+			' May have compatibility issues with modern Jenkins. 
+	+ To change current working directory inside the pipeline use "dir" step: 
+		- dir("subfolder") {
+	+ Use single quotes for shell steps unless Groovy interpolation is needed. 
+	+ A virtual environment (venv) is an isolated Python env with tons of benefits: 
+		- Dependency isolation: each project gets its own set of packages. 
+		- Installing packages with pip globally can break system tools that depend on specific versions. 
+		- Reproducibility: you can freeze dependencies and recreate the exact env elsewhere. 
+		- No sudo needed: safer. 
+		- Easy Cleanup: Done with a project? Just delete the venv folder. No leftover packages polluting your system. 
+	+ There is no need to activate the Python virtual env on each step, it is best to do: 
+		./venv/bin/python 
+	+ To define the parameters: 
+		+ Directive: parameters. 
+		+ Branch name: string(name: , defaultValue: , description: ). 
+		+ Run tests: booleanParam(name: , defaultValue: , description: ). 
+	+ For an optional stage simply do: 
+		when { expression { param.MY_BOOL } }
+	+ To run tests: 
+		+ Module: pytest. 
+		+ Triple verbose. 
+		+ Option --junitxml to specify the path of the XML report. 
+		+ Always display the result by using the JUnit plugin. 
+	+ The XML report is designed to be parsed by Jenkins, not read by humans, so use the JUnit plugin 
+		to publish the results. 
+	+ Run the pipeline once with default values for parameters and after that the button changes to: 
+		"Build with Parameters". 
+	+ To use shell variables in a shell step, we need to skip Groovy interpolation by using single quotes:
+		'''  ''' | '  ' 
+	+ The timeout shell command runs the app for the specified amount of seconds and then kills it 
+		returning code 124. 
+	+ To fail the build use error("Message"). 
+	+ Environment variables are strings. To use them as numbers use: toInteger(). 
+	+ To access an env var do: env.ENV_VAR_NAME. 
+	+ To define Groovy variables and use conditionals, use "script" step: 
+		- def var_name = sh(script: 'shell commands', returnStatus: true)
+	+ To checkout a specific branch, explicit SCM checkout is needed: 
+		- Step: git. 
+		- Specify branch with "branch" argument followed by the branch name (string). 
+		- URL argument is required. 

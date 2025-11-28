@@ -1,0 +1,12 @@
+// Declarative.
+pipeline {
+  agent any
+
+  stages {
+    stage('Display message') {
+      steps {
+        echo "Jenkins has been able to find this file and run this pipeline! "
+      }
+    }
+  }
+}

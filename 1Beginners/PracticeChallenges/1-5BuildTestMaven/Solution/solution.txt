@@ -1,0 +1,27 @@
+* Solution: 
+	1.- Start the container: 		$ docker start jenkins-controller-container 
+	2.- Access Jenkins web UI: 		http://localhost:8080/
+	3.- New Item > BuildTestJavaAppMaven > Pipeline script: 
+pipeline {
+	agent any
+
+	tools {
+		maven "M3"
+	}
+
+	stages {
+		stage('Build') {
+			steps {
+				git 'https://github.com/jglick/simple-maven-project-with-tests.git' 
+				sh "mvn -Dmaven.test.failure.ignore=true clean package" 
+			}
+			post {
+				success {
+					junit '**/target/surefire-reports/TEST-*.xml' 
+					archiveArtifacts 'target/*.jar' 
+				}
+			}
+		}
+	}
+}
+	4.- Build Now. 

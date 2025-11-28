@@ -1,0 +1,1 @@
+* Task: write a simple 'hello world' (declarative) pipeline Jenkinsfile. 
