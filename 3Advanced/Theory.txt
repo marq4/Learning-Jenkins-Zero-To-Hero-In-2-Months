@@ -1,0 +1,236 @@
+* Shared Libraries: 
+	+ A collection of Groovy scripts that define reusable functions (steps) for my Jenkins pipelines. 
+	+ Encapsulate common tasks. 
+	+ Makes pipelines more concise and readable. 
+	+ Code is more maintainable since we avoid duplicating code. 
+	+ Example: org requires a welcome message on every pipeline. 
+	+ Process: 
+		1.- Create a separate repo dedicated to our shared libraries. 
+		2.- Set up Global Pipeline Library in Jenkins. 
+		3.- Write custom steps (Groovy functions). 
+		4.- Integrate in our pipelines using @Library directive. 
+	+ Repo structure: 
+		- root 
+			; src/org/foo/Bar.groovy. 
+			; vars: mandatory. 
+			; resources. 
+	+ Untrusted pipeline libraries: run with sandbox restrictions. 
+	+ If we want to, for example, use a shell script, we use this step: libraryResource. 
+
+
+* Agents: 
+	+ Act as an extension of Jenkins. 
+	+ Managing the task execution. 
+	+ Use executors on remote nodes. 
+	+ Represents a specific way a Node connects to the Controller. 
+	+ Defines: 
+		- Communication protocol. 
+		- Authentication mechanism used. 
+	+ Examples: 
+		- A Java Agent (that lives in a Windows Node) connected (to the Controller) via JNLP. 
+		- An SSH Agent (that lives in a Linux Node) connected (to the Controller) using the SSH proto. 
+		- Docker. 
+		- K8. 
+	+ Any build/test tools are installed on the Node where the Agent runs. 
+	+ Types: 
+		- Permanent: always on stand-by, connected to the Controller waiting for tasks. 
+		- Docker: isolated env with exact tools needed for a Build. 
+		- Cloud-Based: leverage elasticity of Cloud providers like AWS. 
+			; K8 cluster: Pod, run job, delete Pod. 
+		- Label-Based: no specific machines, identified by labels that reflect their capabilities: "java", "windows". 
+	+ Examples for Declarative Pipeline: 
+		- agent { label 'favorite' } 
+		- agent { docker { image 'node:latest'; args '-v $HOME/.npm:/root/.npm' } }
+		- stage('Build') { agent { label 'nodejs' } } 					// Override default agent defined at the top of the pipeline. 
+
+
+
+
+
+
+
+
+* Use K8 Pod as Agent: 
+	+ Configure K8 Cloud: 
+		- Install K8 plugin (not the latest one). 		// Open the plugin's page > Releases > find a version that looks stable > Copy "direct link" link > Go back to Plugin Manager > Advanced settings > paste in "URL" field under "Deploy Plugin". Notice that if another plugin needs an update, it does. 
+		- Get KubeConf: 
+			; Get to the machine where you'll manage K8 from. 
+			; Install kubectl: 
+				$ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" 
+				$ chmod +x kubectl 
+				$ sudo mv kubectl /usr/local/bin/kubectl 
+				$ kubectl version --client 
+			; $ kubectl get nodes 
+			; $ kubectl config view --raw 
+			; Copy the whole thing to a file > Manage Jenkins > Credentials > Secret file > upload the YAML. 
+		- Manage Jenkins > Clouds > New cloud > K8: 
+			; Leave all fields empty or with default values and just go to Credentials section and choose the kubeconfig. 
+			; If you see this message: 
+				` 'TCP port for inbound agents' is disabled in Global Security settings. Connecting Kubernetes agents will not work without this or WebSocket mode! 
+				` Then enable WebSocket option. 
+		- Test Connection. 				// Should display this message: Connected to Kubernetes version: ... 
+		- This is only done to verify the connection. It is not recommended because the kubeconfig file has admin privileges and access to all resources in the K8 cluster. 
+		- Create NameSpace for Jenkins and only provide access to that NameSpace: 
+			; $ kubectl create namespace jenkins 
+			; Copy endpoint (from the kubeconfig, under cluster/server). 
+			; Paste it the At the Jenkins Cloud definition > Kubernetes URL. 
+			; Namespace: jenkins. 
+		- If you "Test Connection" now, error should be: PKIX path, valid certificate. 
+		- Since we're not in PROD, disable https certificate check (in Jenkins). 
+		- Now error is 403 forbidden.  
+		- Create a Service Account: 
+			; $ kubectl --namespace jenkins create serviceaccount jenkins-service-account 
+		- Create a token for it: 
+			; $ kubectl --namespace jenkins create token jenkins-service-account --duration=9999999s		// 7 9's. 
+			; Copy the token. 
+			; Go back to Jenkins > Credentials > Secret text. 
+		- Select that token as Credentials for the K8 Cloud. 
+		- Create Role Binding: 
+			; $ kubectl --namespace jenkins create rolebinding jenkins-admin-binding --clusterrole=admin --serviceaccount=jenkins:jenkins-service-account 
+		- Connection should now work. 
+	+ Specify K8 Pod as Agent in the pipeline definition: 
+		- Jenkins > New Item > Pipeline > name: demo > Pipeline script > select the example definition "Declarative (K8)": 
+agent {
+  kubernetes {
+    yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: ubuntu-container
+    image: ubuntu
+    command:
+    - sleep
+    args:
+    - infinity
+    '''
+    defaultContainer 'ubuntu-container'
+    retries 2
+  }
+}
+	+ Build Now. You should see the name of the pod in the Console Output. 
+	+ Use a specific container other than the default in a stage: 
+		stage('NodeJS version (must run in a container that has Node.js installed)') {
+			steps {
+				container('nodejs-container') {
+					sh ' node -v '
+					sh ' npm -v '
+				}
+			}
+		}
+
+
+
+
+
+
+
+
+
+
+* Scripted Pipeline: 
+	+ Code centric, for complex logic. 
+	+ More flexible. 
+
+
+
+
+
+
+* Supervision: 
+	+ Monitoring our Jenkins server proactively helps us anticipate potential problems: 
+		- System errors. 
+		- Plugin malfunctions. 
+		- Pipeline code issues. 
+	+ To: 
+		- Prevent disruptions. 
+		- Reduce delays. 
+		- Maintain efficiency. 
+	+ Logs: 
+		- $JENKINS_HOME/jenkins.log. 
+		- Manage Jenkins > System Log. 
+		- Log Recorder: 
+			; ONLY change the level of logging when debugging, as it generates A TON of logs. 
+			; Options: 
+				~ From UI (recommended). 
+				~ Groovy script (init). 
+				~ File (where we define logging levels). 
+				~ Add a Logger via fs: JENKINS_HOME/log/*.xml. 
+				~ Set default levels from UI (resets after restart). 
+			; Manage Jenkins > System Log > Add recorder > Add > find relevant package (e.g. K8). 
+	+ Monitoring: 
+		- Load Statistics page: server activity: executors. 
+		- Monitoring plugin: JavaMelody. 
+		- Prometheus & Grafana: 
+			; "Prometheus metrics" plugin. 
+			; Docker Compose with 2 services: 		// Also a network and a volume. 
+				~ Prometheus. 
+				~ Grafana. 
+				~ Add job in prometheus YAML: jenkins, /prometheus/, http, <JENKINS_URL>. 
+			; $ docker compose up -d 
+			; Jenkins target should be up in Prometheus. 
+			; Log into Grafana > Connections > Data sources > listens to Prometheus by default. 
+			; Search for a Jenkins Dashboard (e.g.: Jenkins: Performance and Health Overview) > copy id. 
+			; Grafana > Dashboards > New > Import > paste id > Load. 
+	+ Auditing: 
+		- Track who did what. 
+		- Audit Trail plugin: Loggers: File, Syslog, Console, Elastic Search. 
+		- Job Config History plugin: acts as a VCS for Jenkins config. 
+	+ Migrating Jenkins to another machine: 
+		- JDK in the machine must be same version. 
+		- Install Jenkins on the new machine but do not unlock it. 
+		- Stop Jenkins service: 
+			` $ systemctl stop jenkins 
+		- Compress JENKINS_HOME: 
+			` $ cd /var/lib && tar zcfv jenkinsbkp.tar.zip jenkins/ 
+		- SCP tarball over to the new machine. 
+		- Stop Jenkins service in the new machine. 
+		- Delete "jenkins" dir on new machine. 
+		- Extract it: 
+			` $ unzip jenkinsbkp.tar.zip -d /var/lib/
+		- Start Jenkins service. 
+
+
+
+
+* Backup: 
+	+ Strategies: 
+		- fs backups. 
+		- Backup plugins: "ThinBackup": 
+			; Install it. 
+			; Manage Jenkins > ThinBackup config: 
+				~ Dir: /var/lib/jenkins/JENKINS_BACKUP/. 
+			; Manage Jenkins > Tools and Actions > ThinBackup > Backup now. 
+			; Manage Jenkins > System Log > All Jenkins Logs > "Starting manual backup." 
+		- Manual scripting. 
+	+ What to backup? 
+		- config.xml. 
+		- All *.xml. 
+		- jobs/. 		// Exclude build artifacts & logs. 
+		- plugins/. 
+		- secrets/. 
+		- users/. 
+
+
+* Managing Jenkins with code: 
+	+ JobDSL plugin: define jobs with Groovy. 
+	+ Job Builder plugin: YAML. 
+
+* Jenkins Configuration as Code (JCasC): 
+	+ YAML. 
+	+ Version Control integration: store Jenkins config files in Git. 
+	+ Repeatable deployments to multiple Controllers. 
+	+ Process: 
+		- Install configuration-as-code plugin. 
+		- Manage Jenkins > Configuration as Code. 
+		- Click on "View Configuration" button to get a YAML representing the current Jenkins Controller configuration. 
+		- Push it as-is to VCS. 
+		- Modify it as needed. 
+	+ Sections: 
+		- jenkins. 
+		- credentials. 
+		- globalCredentialsConfiguration. 
+		- security. 
+		- appearance. 
+		- tool. 
+		- unclassified. 

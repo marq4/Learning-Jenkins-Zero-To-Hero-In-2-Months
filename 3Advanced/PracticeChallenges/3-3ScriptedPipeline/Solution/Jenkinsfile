@@ -1,0 +1,48 @@
+// Scripted (pipeline).
+node('worker') { // By label.
+  // Node.js tool:
+  env.NODEJS_HOME = "${tool 'NodeJS2260'}"
+  env.PATH = "${env.NODEJS_HOME}/bin:${env.PATH}"
+
+  env.MONGO_URI = "mongodb+srv://supercluster.d83jj.mongodb.net/superData"
+
+  // Option:
+  properties([
+    disableConcurrentBuilds(abortPrevious: true)
+  ])
+
+  // There is no implicit SCM code checkout:
+  stage('SCM checkout') {
+    checkout scm
+  }
+
+  // Install dependencies (cache + stash):
+  stage('Install dependencies') {
+    timestamps {
+      cache(maxCacheSize: 550, 
+      caches: [arbitraryFileCache(
+        cacheName: 'npm-deps',
+        cacheValidityDecidingFile: 'package.json',
+        includes: '**/*',
+        path: 'node_modules/'
+      )])
+      {
+        sh ' npm install --no-audit '
+        stash(includes: 'node_modules/', name: 'solar-system-node-modules')
+      }
+    }
+  }
+
+  // Requires MongoDB credentials:
+  stage('Unit testing') {
+    withCredentials([
+      usernamePassword(
+        credentialsId: 'mongo-db-creds',
+        passwordVariable: 'MONGO_PASSWORD',
+        usernameVariable: 'MONGO_USERNAME'
+    )])
+    {
+      sh ' npm test '
+    }
+  }
+}

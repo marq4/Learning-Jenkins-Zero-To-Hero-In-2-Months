@@ -1,0 +1,16 @@
+// Declarative.
+pipeline {
+  agent {
+    dockerfile {
+      filename 'Dockerfile'
+      label 'ubuntu-docker'
+    }
+  }
+  stages {
+    stage('Cowsay') {
+      steps {
+        sh ' cowsay -f dragon "This is running on a Docker container. " '
+      }
+    }
+  }
+}

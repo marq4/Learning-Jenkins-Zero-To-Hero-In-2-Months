@@ -1,0 +1,15 @@
+* Tasks: 
+	+ Create a new Ubuntu Linux container (worker) "ubuntu-docker". Treat it as a VM. 
+	+ Configure it as a permanent Agent in the Jenkins controller. 
+	+ Connect them using JNLP (recommended for containers). 
+	+ Run a freestyle job on it. 
+	+ Run a pipeline job on it. 
+	+ Run another stage on a Docker Image Agent (Alpine Linux), inside the worker container. 
+	+ Create a new pipeline project that: 
+		- Checks out code from a GitHub repo that contains a Jenkinsfile and a Dockerfile. 
+		- Runs a stage on the same "VM" but use a custom Dockerfile to execute this command: 
+			; $ cowsay -f dragon "This is running on a custom Docker container." 
+			// Since this is not a Docker course, the Dockerfile has been provided: Dockerfile.cowsay. 
+
+* Theory question: 
+	+ What directive is used when a requirement is to have separate containers for each stage? 

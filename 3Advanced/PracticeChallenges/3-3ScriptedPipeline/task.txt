@@ -1,0 +1,13 @@
+* Task: 
+	+ Migrate the solar-system Node.js project's CICD pipeline to use the scripted syntax. 
+
+* Requirements: 
+	+ Stages: 
+		- Install dependencies. 
+		- Unit testing. 
+	+ Run in the static Agent (ubuntu-docker). 
+	+ Cache and stash the Node.js dependencies during the "Install Dependencies" stage, 
+		and use them in any stages that require them. 
+	+ Preserve "disable concurrent builds" option. 
+	+ Preserve nodejs tool. 
+	+ Preserve timestamps option for the "Install Dependencies" stage. 

@@ -1,0 +1,113 @@
+* Solution: 
+	+ Start Docker Desktop. 
+	+ Start the Jenkins container: 
+		- $ docker start jenkins-controller-container 
+	+ Run a new "worker" Ubuntu container: 
+		- $ docker run -dit -v //var/run/docker.sock:/var/run/docker.sock  -v "C:/Marq/Documents_C/Career/Jenkins/KodeKloud/Worker_data"://home/jenkins-agent/ --name worker ubuntu //bin/bash 
+	+ Create a Docker network and connect both containers: 
+		- $ docker network create jenkins-network 
+		- $ docker network connect jenkins-network advanced-jenkins-cont 
+		- $ docker network connect jenkins-network worker 
+	+ Log into Jenkins. 
+	+ Create new Node/Agent: 
+		- Manage Jenkins > Nodes > New Node. 
+		- Name: ubuntu-docker. 
+		- Type: Permanent Agent. 
+		- Remote root directory: /home/jenkins-agent/. 
+		- Labels: worker Linux Ubuntu Docker. 
+		- Usage: Only build jobs with label expressions matching this node. 
+		- Save. 
+	+ Notice that new Node is offline. 
+	+ Connect it to the Controller: 
+		- Click on "ubuntu-docker" Node. 
+		- Connect to Jenkins Controller container and get Java version: 
+			; $ winpty docker exec -it -u root c8 bash 
+			; $ java -version 
+		- Copy and paste the commands inside the worker container: 
+			; $ winpty docker exec -it worker bash 
+			; $ apt update && apt install curl 
+			; $ cd root 
+			; $ curl -O http://advanced-jenkins-cont:8080/jnlpJars/agent.jar 
+			// Install same version of Java as Controller: 
+			; $ apt update && apt install wget apt-transport-https gnupg 
+			; $ wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add - 
+			; $ echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list 
+			; $ apt update 
+			; $ apt install temurin-21-jdk 
+			; $ java -version 
+			; $ java -jar agent.jar -url http://advanced-jenkins-cont:8080/ -secret eb04eb2cc95391db39da0e7422b604e16d9cf8ec06ccd23a7fd2f2cae7cef76e -name "ubuntu-docker" -workDir "/home/jenkins-agent/"
+			# INFO: Connected 
+	+ Node should now be online. 
+	+ Run a freestyle job on it: 
+		- Jenkins Dashboard > New Item > Name: "WorkerJob", Freestyle. 
+		- Restrict where this project can be run: worker. 
+		- Build Step > Execute shell: cat /etc/*release*. 
+		- Save & Build Now. 
+		- Notice that OS is Ubuntu, whereas Controller is running on Debian. 
+	+ Run a pipeline job on it: 
+		- Jenkins Dashboard > New Item > Name: "WorkerPipeline", Pipeline. 
+		- Pipeline script: 
+// Declarative. 
+pipeline {
+    agent any
+    stages {
+        stage('Runs on Controller') {
+            steps {
+                sh ' cat /etc/*release* '
+            }
+        }
+        stage('Runs on worker') {
+            agent {
+                label 'worker'
+            }
+            steps {
+                sh ' cat /etc/*release* '
+            }
+        }
+    }
+}
+		- Build Now. 
+	+ Run another stage on a Docker Image Agent: 
+		- Install Docker client in worker container:
+			; $ winpty docker exec -it -u root 1f bash 
+			; $ apt update 
+			; $ install -m 0755 -d /etc/apt/keyrings 
+			; $ curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg 
+			; $ chmod a+r /etc/apt/keyrings/docker.gpg 
+			; $ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null 
+			; $ apt update 
+			; $ apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 
+			; $ docker info 
+			; $ chmod 666 /var/run/docker.sock 
+		- Install "Docker Pipeline" plugin. 
+		- Get Docker step / command: 
+			; Go to any pipeline project > Pipeline Syntax > Declarative Directive Generator. 
+			; Agent > docker. 
+			; Image: alpine. 
+			; Click on "Generate Declarative Directive" button. 
+		- Add a new stage to "WorkerPipeline" project:
+stage('Runs on Docker') {
+            agent {
+                docker {
+                    label ' ubuntu-docker'
+                    image 'alpine'
+                }
+            }
+            steps {
+                sh ' cat /etc/*release* '
+            }
+}
+		- Save. Build Now. 
+	+ Run a stage using a custom Docker image: 
+		- Create a new private GitHub repo. 			// Jenkinsfile.19 + Dockerfile.cowsay. 
+		- Create a new PAT if needed. 
+		- Pipeline Syntax > Declarative Directive Generator. 
+		- Agent > dockerfile. 
+		- New Item > Pipeline. 
+		- Pipeline script from SCM > provide your GitHub repo URL, Branch: */main. 
+		- Save, Build Now. 
+
+* Theory question: 
+	+ What directive is used when a requirement is to have separate containers for each stage? 
+	Ans: 
+		- newContainerPerStage. 

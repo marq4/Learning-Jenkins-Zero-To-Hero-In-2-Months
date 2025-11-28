@@ -1,0 +1,43 @@
+* Solution: 
+	+ Start Docker Desktop. 
+	+ Run a new container with same volume but with additional port mapping: 50000:50000, and the Docker socket for Docker-in-Docker: 
+		- $ docker run -d -p 8080:8080 -p 50000:50000 -v //var/run/docker.sock:/var/run/docker.sock -v "C:/Jenkins/Learning-Jenkins-Zero-To-Hero-In-2-Months/Docker_Jenkins_Home":/var/jenkins_home --name jenkins-controller-container jenkins/jenkins:lts 
+	+ Install Docker in this new container (including the socket hack). 
+	+ Log into Jenkins. 
+	+ Execute Ngrok: 
+		- $ ngrok http 8080 --log=stdout 
+	+ Clone the repo again: 
+		- $ git clone https://github.com/LearningJenkins-marq4/solar-system-jenkins-pipelines-KK-course.git 
+	+ Create a new branch for this advanced course from the latest working branch: 
+		- $ git checkout -b feature/deployment 
+		- $ git branch --set-upstream-to=origin/feature/deployment feature/deployment 
+		- $ git pull 
+		- $ git checkout -b feature/advanced-course feature/deployment 
+	+ Edit Jenkinsfile so that only relevant stages are NOT commented-out: Jenkinsfile.14 
+	+ Commit & push. 
+	+ Create Shared Libraries repo: 
+		- GitHub > Org > repos > New repo: jenkins-shared-libraries. 
+		- Clone it locally. 
+		- Create required directory "vars". 
+	+ Inside vars subdir, create new file "sendSlackNotification.groovy". 
+	+ Commit & push. 
+	+ Configure the Shared Library on Jenkins: 
+		- Manage Jenkins > System > Global Trusted Pipeline Libraries > Add: 
+			; Name: kodekloud-learning-jenkins-trusted-groovy-libraries. 
+			; Default version: main. 
+			; SCM: Git, <REPO_URL>. 
+	+ Load & use Shared Library in pipeline: Jenkinsfile.15 
+	+ Now do the same for the welcome message: Jenkinsfile.16 
+	+ Trivy: 
+		- Create a new branch inside the library repo: 
+			; $ git checkout -b feature/trivy-scan 
+		- Move the code from the Jenkinsfile over to new file vars/trivyScan.groovy. 
+		- Override default version of loaded library (main), and make changes to Jenkinsfile: Jenkinsfile.17 
+		- Commit & push on both repos, and verify Jenkins job fails because of the critical mongoose vulnerability. 
+	+ Using LibraryResource step: 
+		- Create resources folder in the Jenkins Shared Library repo. 
+		- Inside create folder scripts and inside file trivy.sh. 
+		- Create new file: trivyScanLibraryResource.groovy. 
+		- Create new file: loadScript.groovy. 
+		- Jenkinsfile.18 
+		- Commit & push, pipeline should succeed. 

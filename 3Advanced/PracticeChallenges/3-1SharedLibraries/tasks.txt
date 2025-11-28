@@ -1,0 +1,18 @@
+* Exercise description: 
+	+  Suppose we expect the number of Jenkins Pipelines to grow like crazy soon. 
+	+ We need a way to place all common code in a central location and avoid code duplication. 
+
+* Tasks: 
+	+ Create Shared Libraries that contain the following functionality: 
+		- A function that displays a welcome message. 
+		- A custom step that sends a Slack notification when a build completes: build status, job name, build #, and URL. 
+		- The entire Trivy functionality, allowing user to specify severity, exit code, and format. 
+
+* Specifications: 
+	+ Default branch should only contain welcome and Slack stuff. 
+	+ Feature branch should also contain Trivy stuff. 
+	+ The Trivy command should actually be called by a shell script. 
+
+* Notes: 
+	+ Do not worry about setting up Slack if you don't already have it. 
+	+ Remove all unnecessary stages from the Jenkinsfile we've been building in the previous courses. 
