@@ -1,6 +1,6 @@
 # Learning Jenkins: Zero 2 Hero in 2 months (text-only course).
 
-These are my notes, DevOps interview cheat sheet, practice challenges (and solutions) to 3 KodeKloud courses: 
+These are my notes, DevOps interview cheat sheet, and practice challenges (+ solutions) to 3 KodeKloud courses: 
 * Jenkins For Beginners (basics).
 * Jenkins Pipelines (intermediate).
 * Advanced Jenkins. 
