@@ -1,0 +1,4 @@
+* Tasks: 
+	+ Install these additional plugins: Dark Theme, Emotional Jenkins, Blue Ocean. 
+	+ Install NodeJS version: 22.6 in Jenkins (under Tools). 
+	+ Build a simple freestyle job that displays the versions of node and npm. 

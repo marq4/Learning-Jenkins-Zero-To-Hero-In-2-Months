@@ -1,0 +1,15 @@
+* Security: 
+	+ What measures were taken to ensure security in this Jenkins project? 
+		Ans: 
+		- Jenkins does not know my personal GitHub password. 
+		- Did not hard-code any credentials into the Jenkinsfile. 
+		- To allow Jenkins to access the GitHub repo, a GitHub Personal Access Token is used. 
+		- The NVD API key is stored as a secret text credential in Jenkins. 
+		- To avoid: Warning: A secret was passed to "dependencyCheck" using Groovy String interpolation, which is insecure: 
+			; withEnv + ''': prevent Groovy interpolation, so the variable is passed to the tool directly rather than being interpolated by Jenkins first. 
+		- Never use your real Docker Hub password directly in Jenkins, 
+			instead use a Docker Hub Access Token. 
+
+	+ Security risks ignored due to complexity: 
+		- When we run the docker container manually to test the app we are passing the DB password as an envirionment variable. 
+		- In production we would have to use Docker secrets + Docker Compose. 

@@ -1,0 +1,7 @@
+* Tasks: 
+	+ Only for feature branches: 
+		- Deploy: the Docker image to AWS EC2. 
+		- Integration Testing: 
+			; Get public DNS name of EC2 instance dynamically. 
+			; Call /live endpoint. 
+			; Call /planet endpoint. 

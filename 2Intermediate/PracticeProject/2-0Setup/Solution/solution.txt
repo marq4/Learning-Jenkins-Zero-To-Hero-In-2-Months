@@ -1,0 +1,14 @@
+* Solution: 
+	+ Start Docker Desktop. 
+	+ Start container: 		$ docker start jenkins-controller-container 
+	+ Installation of Dark Theme plugin is not necessary. Simply did: Manage Jenkins > Appearance. 
+	+ Install NodeJS plugin. 
+	+ In the Freestyle Project > Environment > Provide Node & npm bin/ folder to PATH. 
+	+ Build Steps: Shell: 
+		node -v
+		npm -v
+
+* Tip: 
+	+ This error: 
+		Unexpected end of ZLIB input stream 
+	   is intermittent, just try again the next day. 

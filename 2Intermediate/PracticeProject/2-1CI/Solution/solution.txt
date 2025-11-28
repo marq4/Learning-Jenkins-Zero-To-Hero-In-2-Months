@@ -1,0 +1,177 @@
+* Solution: 
+	+ Start Docker, start Jenkins container, log into Jenkins: 
+		$ docker start jenkins-controller-container 
+	+ GitHub > Your profile pic > Settings > Organizations > New Org. 
+	+ Fork the repo to your personal account. 
+	+ Transfer ownership to your new org. 
+	+ Jenkins > New Item > Organization Folder "LearningJenkins". 
+	+ Create a GitHub Personal Access Token: 				// NEVER give Jenkins a real password you use as it can be easily decoded by anyone that uses the Jenkins instace. 
+		- Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic). 
+		- Scopes: 
+			' repo. 
+			' admin:org. 
+			' admin:repo_hook. 
+			' admin:org_hook. 
+			' notifications. 
+		- Generate token. 
+		- Copy it and paste it in a temporary notepad. 
+	+ Add the PAT to Jenkins: 
+		- Manage Jenkins > Credentials > Global > Username with password. 
+	+ Go back to the Organization Folder > Repository Sources > Add > GitHub Org. 
+		- API endpoint is read-only, don't worry about it. It will be populated from the credentials. 
+		- Credentials: select the creds you just created (<YOUR_GITHUB_USERNAME>/****). 
+		- Owner: <GITHUB_ORG>. 
+		- Save. 
+		- Manage hooks: true. 
+	+ Enable CICD for solar-system project: 
+		- Clone the repo locally. 
+		- Create a new feature branch: 
+			$ git checkout -b feature/enable-cicd 
+		- To verify everything works, create a simple Jenkinsfile that displays the versions of node and npm (Jenkinsfile.1). 
+		- Open Blue Ocean and cofirm the version of NodeJS. 
+	+ Verify app works: 
+		- Comment-out placeholder lines in Dockerfile. 
+		- $ docker build -t solar-system_img:0 .
+		- $ docker run -d -p 3000:3000 -e MONGO_URI=mongodb+srv://supercluster.d83jj.mongodb.net/superData -e MONGO_USERNAME=superuser -e MONGO_PASSWORD=SuperPassword    --name solar-system_cont_0 solar-system_img:0 
+		- http://localhost:3000/ 
+	+ Set up a webhook so that a new job is automatically triggered after code commit: 
+		- Install this plugin: Multibranch Scan Webhook Trigger. 
+		- Jenkins Organization Folder > Scan Organization Triggers > Scan by webhook (token not needed). 
+		- Set up ngrok and get your URL: 
+			' Open a new Git Bash window as admin. 
+			' $ choco install ngrok
+			' Close the window. 
+			' Sign up at https://dashboard.ngrok.com/signup. 
+			' Copy the command with your token. 
+			' Open a new Git Bash window to configure ngrok: 
+				$ ngrok config add-authtoken <YOUR_TOKEN> 
+			' Excute ngrok:
+				$ ngrok http 8080 --log=stdout 
+			' Copy the forwarding URL. 
+		- GitHub Organization → Settings → Webhooks → Add webhook. 
+			' Payload URL: paste your URL + /github-webhook/ 
+			' Content type: application/json. 
+			' Secret: <EMPTY>. 
+			' Events: 
+				` Pushes. 
+				` Repositories. 
+	// Continous Integration: 
+	+ Next stage: install dependencies (Jenkinsfile.2). 
+		- To confirm: Jenkins Org Folder > feature branch > latest job > Workspaces > <workspace>: you should see "node_modules" folder. 
+	+ Next stage: depencency scanning: 
+		- Install this plugin: OWASP Dependency-Check. 
+		- Manage Jenkins > Tools > Dependency-Check installations > Add > Install automatically > Install from github > <LATEST>. 
+		- Get a free API key from: https://nvd.nist.gov/developers/request-an-api-key 
+		- Add it as a secret text credential in Jenkins. 
+		- Define a super-stage: "Dependency Scanning". 
+		- Define 2 sub-stages: NPM Audit, OWASP Dependency Check. 	// Jenkinsfile.3 
+	+ Fix critical vulnerabilities manually: 
+		- Install NPM locally. 
+		- $ npm audit --audit-level=critical | grep -i critical -B 1 
+		- $ npm install <PACKAGE>@<VERSION> 			// Lowest version that fixes vulnerability. 
+	+ Publish HTML report: 
+		- Go to the workspace to get the name of the report: dependency-check-jenkins.html. 
+		- Open Pipeline Syntax window > publishHTML: 
+			; Path: DependencyScanReports. 
+			; Page: dependency-check-jenkins.html. 
+			; Report title: Dependency Check Jenkins HTML Report. 
+			; Copy snippet and paste into the Jenkinsfile. 
+		- Enable CSS by configuring Content Security Policy: 
+			; https://www.jenkins.io/doc/book/security/configuring-content-security-policy/
+			; Copy value of "Unset the header". 
+			; Manage Jenkins > Nodes > Built-In Node > Script Console > paste > Run. 
+	+ Expose XML JUnit report: 
+		- Make sure JUnit plugin is installed. 
+		- Go to workspace and get name of XML file: dependency-check-junit.xml. 
+		- Snipper Generator > junit: Archive JUnit-formatted test results: 
+			; Test report XML: dependency-check-junit.xml. 
+			; Do not fail the build on empty test results. 
+			; Copy snippet and paste into the Jenkinsfile. 
+	+ Add "node_modules/" folder to .gitignore and push changes. 		// Jenkinsfile.4 
+	+ Next stage: unit testing: 
+		- Create MongoDB credentials in Jenkins: Username with password > Username: superuser, Password: SuperPassword, ID: mongo-db-creds. 
+		- Snippet Generator > withCredentials > Bindings: Username and password (separated) > Username Variable: MONGO_USERNAME, Password Variable: MONGO_PASSWORD, Credentials: not show, maybe a Jenkins bug > Generate Pipeline Script. 
+		- Add MONGO_URI as an env var in the Jenkinsfile. 
+		- Copy and paste into Jenkinsfile. 				// Jenkinsfile.5 
+	+ Next stage: code coverage: 
+		- Copy withCredentials step from Unit Testing stage. 
+		- Snippet Generator > catchError: 
+			; Message: "Ignoring for now.". 
+			; Build result on error: SUC. 
+			; Stage result on error: unstable. 
+		- Workspace > coverage > lcov-report > index.html. 
+		- Copy publishHTML step from OWASP stage.		 	// Jenkinsfile.6 
+	+ Refactor Jenkinsfile: remove withCredentials (mongo), move report archiving 
+	   and publising to a "post" section that always executes.		
+		- Create 2 new secret text credentials in Jenkins. 			
+		- Use them under "environment" section. 			
+		- Move all junit and HTML steps to post always. 			// Jenkinsfile.7  
+	+ Next stage: SonarQube quality gate: 
+		- Create folder Docker_SonarQube for persistance. Subdirs: 
+			; extensions. 
+			; data. 
+			; logs. 
+		- Create and run a new Docker container to run the local SonarQube server: 
+			$ docker run -d --name local_sonarqube_server_cont_ -p 9000:9000 -v "C:/Marq/Documents_C/Career/Jenkins/KodeKloud/Intermediate (Pipelines)/Docker_SonarQube/data":/opt/sonarqube/data -v "C:/Marq/Documents_C/Career/Jenkins/KodeKloud/Intermediate (Pipelines)/Docker_SonarQube/extensions":/opt/sonarqube/extensions -v "C:/Marq/Documents_C/Career/Jenkins/KodeKloud/Intermediate (Pipelines)/Docker_SonarQube/logs":/opt/sonarqube/logs sonarqube:lts-community 
+		- Create a Docker network for both containers and connect them: 
+			$ docker network create jenkins-sonar-network 
+			$ docker network connect jenkins-sonar-network local_sonarqube_server_cont_ 
+			$ docker network connect jenkins-sonar-network intermediate_jenkins_cont_ 
+		- http://localhost:9000/ 
+		- Default creds: admin/admin. 
+		- Create new project manually: 
+			; Name: Solar-System. 
+			; Main branch: feature/enable-cicd. 
+		- With Jenkins. 
+		- GitHub. 
+		- Install "SonarQube Scanner" plugin. 
+		- Tools > SonarQube Scanner installations. 
+		- Configure it in Jenkinsfile as an env var. 
+		- Test it by simply doing: echo $SONAR_SCANER_HOME. 
+		- Copy the commands from the SonarQube UI into the Jenkinsfile. 	
+		- Configure webhook so that SonarQube can send the result to Jenkins: 
+			; Administration > Configuration > Webhooks > Create. 
+			; http://<YOUR_LAPTOP_IPV4>:8080/sonarqube-webhook/
+		- SonarQube > go to top right to admin user icon > My Account > Security tab > Tokens. 
+			; Name: sonar-admin-access. 
+			; Project: Solar-System. 
+			; No expiration. 
+		- Add this token as a Jenkins cred. 
+		- Set up SonarQube server details in Jenkins: 
+			; Manage Jenkins > System > SonarQube servers > http://<YOUR_LAPTOP_IPV4>:9000. 
+		// Jenkinsfile.8 
+		// This stage will always pass as the quality gate checks for new code coverage. 
+		// Community edition does not support coverage of overall code. 
+	+ Next stage: dockerize: 
+		- Install "Docker pipeline" plugin. 
+		- Mount Docker socket from host (laptop) into new Jenkins container:
+			; $ docker run -d -p 8080:8080 -p 5000:5000 -v //var/run/docker.sock:/var/run/docker.sock -v "C:/Marq/Documents_C/Career/Jenkins/KodeKloud/Intermediate (Pipelines)/Docker_Jenkins_Home":/var/jenkins_home --name 2intermediate_jenkins_cont_ jenkins/jenkins:lts 
+		- Install Docker client in new Jenkins container: 
+			; $ winpty docker exec -it -u root 1f bash 
+			; $ apt update 
+			; $ install -m 0755 -d /etc/apt/keyrings 
+			; $ curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg 
+			; $ chmod a+r /etc/apt/keyrings/docker.gpg 
+			; $ echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null 
+			; $ apt update 
+			; $ apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 
+			; $ docker info 
+		- Add Jenkins User to Docker Group: 
+			; $ usermod -aG docker jenkins 
+		- Restart Jenkins: http://localhost:8080/restart, Yes, restart container. 
+		- Quick hack in case of "permission denied" error: 
+			; $ chmod 666 /var/run/docker.sock 
+		- Jenkinsfile.9 
+		- Trivy: Jenkinsfile.10 
+		- Push to registry: 
+			; Create a PAT on Docker Hub. 
+			; Add that token as creds in Jenkins. 
+			; Jenkinsfile.11 
+
+* Notes: 
+	+ NVD: National Vulnerability Database. 
+	+ In case of problems updating the NVD DB (such as NPEs) make sure you're using the latest version of Dependency-Check Core. 
+	+ We are only updating packages with critical vulnerabilties as updating all vulnerable packages could break the app, and this is a Jenkins course, not NodeJS. 
+	+ Ignoring mongoose <=6.13.5 critical vulnerabilty as fixing it would require updating the JS code. 
+	+ The installation of Sonar Scanner version 7.3 took like 1/2 an hour. 
+	+ SonarQube community edition (free) always analyses the main branch. 

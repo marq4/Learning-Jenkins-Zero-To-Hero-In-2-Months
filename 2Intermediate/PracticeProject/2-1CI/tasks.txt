@@ -1,0 +1,35 @@
+* Exercise description: 
+	+ Suppose we are starting a new company (Learning Jenkins Inc). 
+	+ We will adopt a microserice architecture for our system(s) / product(s). 
+	+ We may fork / import some repos. 
+
+* Requirements: 
+	+ DO NOT manually create Jenkins project for each repo / branch. 
+	+ When a repo / branch contains a Jenkinsfile, build it automatically. 
+		' You will need ngrok for GitHub to be able to reach your local Jenkins on Docker. 
+	+ Build should fail if any critical vulnerabilities are found in the project's dependencies. 
+	+ Only fix critical dependecy vulnerabilities (that aren't breaking-changes), and do it manually. 
+	+ Enable timestamps only for "Install dependencies" CI stage. 
+	+ Scan Docker image for vulneabilities using Trivy. 
+
+* Tasks: 
+	+ Create a new Organization in GitHub. 
+	+ Get this repo into your new org: https://github.com/sidd-harth/solar-system-gitea 
+	+ Manage all repos + branches for this new company from Jenkins. 
+	+ CI Pipeline stages: 
+		- Install dependencies. 
+		- Dependency scanning: in parallel: NPM audit + OWASP dependency check. 
+		- Unit testing. 
+		- Code coverage (NYC): catch error. 
+		- SAST (SonarQube). 
+		- Dockerize. 
+
+* Notes: 
+	+ To avoid frustration when connecting the Jenkins Organization Folder to the GitHub Org: 
+		- Jenkins has some of the most confusing, inconsistent UX out there. 
+		- GitHub Server config wants "Secret text" credentials. 
+		- GitHub Organization source wants "Username with password" credentials. 
+		- Both use the same PAT. 
+		- Fields randomly become read-only (e.g. API endpoint under Repository Sources). 
+		- No clear error messages about what's wrong. 
+	+ Recommendation: keep token values in notepad open until you've verified everything's working. 

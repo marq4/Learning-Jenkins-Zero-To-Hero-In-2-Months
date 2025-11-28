@@ -1,0 +1,124 @@
+* Organization Folders (best practice, recommended): 
+	+ Provide a convenient way to automate creation/deletion of projects in Jenkins, as repos and branches 
+		are added or removed. 
+	+ Jenkins can auto detect new repos and generate a Multibranch Pipeline for: 
+		- GitHub organizations. 
+		- Bitbucket teams. 
+		- GitLab groups. 
+		- Gitea organizations. 
+
+* SAST (Static App Security Testing) (static analysis): 
+	+ Testing method that examines app source code to identify security vulnerabilities. 
+	+ Code scanner that flags potential security issues. 
+	+ SonarQube: OSS platform from SonarSource, helps continuously monitor code quality and perform automated code reviews. 
+		- CLI: sonar-scanner. 
+	+ Benefits: 
+		- Early bug detection. 
+		- Refactor & simplification. 
+		- Automated code rule enforcement. 
+	+ Enforcing quality standards with Quality Gates: 
+		- Code smells. 
+		- Security hot spots. 
+		- Code coverage: % of code tested by automated tests. 
+
+* Kubernetes (K8): 
+	+ OSS container orchestration platform originally developed by Google and now maintained by CNCF. 
+	+ Automate: deployment, scaling, management of containerized apps. 
+	+ Nodes are the individual machines (physical or virtual) that make up the K8 cluster. 
+	+ Nodes can be either Worker nodes, or Controller nodes. 
+	+ Workers run the containers. 
+	+ Controllers manage the cluster. Include: 
+		- API server: entry point for managing the cluster, serves the K8 API. 
+		- Controller Manager. 
+		- Scheduler. 
+		- etcd. 
+	+ Pod: 
+		- The smallest deployable unit. 
+		- Represents a single instance of a running process in a cluster. 
+		- Encapsulate 1 or more containers that share same network namespace, storage, and IP address. 
+		- Often used to group containers that need to work together. 
+	+ Deployments: 
+		- High-level abstraction for managing Replica Sets and Pods. 
+		- Provide declarative updates to apps, allowing us to describe the desired state. 
+	+ Services: 
+		- Access the Pods. 
+		- Provide a stable & consistent network endpoint to access Pods. 
+		- Can load balance traffic among multiple Pods. 
+		- LB service Cloud: to expose my service to external world. Example: AWS ELB (Elastic Load Balancer). Can cost. 
+		- K8 Ingress: alternative to Cloud LB to manage and route HTTP(S) traffic into the cluster. 
+			; Often configured with Service Type of: ClusterIP. 
+			; ClusterIP services provide internal access to Pods within cluster, but are not directly exposed externally. 
+
+* GitOps: 
+	+ A framework where the entire code delivery process is controlled via Git. 
+	+ Includes infra (IaC) & app definition as code and automation to deploy changes and rollback. 
+	+ Can be considered an extension of IaC that uses Git as the VCS (Version Control System). 
+	+ A GitOps Operator runs within one of the K8 clusters. It continuously monitors & pulls changes from the Git repo, 
+		and applies them within the cluster it is running on, or another cluster. 
+		- Makes sure the desired state always matches the actual state. 
+	+ CICD: 
+		- 2 Git repos: 
+			; App code + app resources (config, certs). 
+			; K8 Manifest (YAML specifications). 
+		- GitOps Operator (ArgoCD Op), which is running on a K8 cluster, pulls the Manifest from the repo and will take necessary changes to match Taget State. 
+		- Dev pushes code changes -> Jenkins CI -> update Manifest -> someone approves & merges PR feature branch to MAIN -> ArgoCD Op automatically applies changes to cluster. 
+
+* ArgoCD: 
+	+ Terminology: 
+		- Application: group of K8 resources defined by a manifest. 
+		- App source type: tool used to build the app. E.g.: Helm, Kustomize, Ksonnet. 
+		- Project: logical grouping of apps, useful when ArgoCD is used by multiple teams. 
+		- Target State: the desired state of an app, as represented by files in a Git repo. 
+		- Live State: the current status of the app resources like: pods, configmap, secrets, created/deployed in the K8 cluster. 
+		- Sync: when an ArgoCD App is created, it tries to synchronize the desired state in Git to the Live State in the cluster. 
+			; The process of making an App move to its Target State, usually by applying changes to the K8 cluster. 
+			; Reconciles the current cluster state with the Target State in Git. 
+		- Sync Status: whether or not the Live State matches the Target State. 
+		- Sync Operation Status: whether or not a Sync succeeded. 
+		- Refresh (Option): compares the latest code in Git with the Live State, figures out what's different, and can initiate an automated Sync (or ask admin to do manually). 
+		- Health (Assessments): for several standard K8 resources. 
+
+
+* DAST: Dynamic App Security Testing. 
+	+ Identify & address potential vulnerabilities before the app goes live. 
+	+ DAST tools scan app's web UI and APIs to detect common vulnerabilities like: 
+		- SQL injection. 
+		- XSS (Cross-Site Scripting). 
+	+ Relies on the RUNNING app, instead of the source code. 
+	+ One OSS tool is ZED Attack Proxy (ZAP). 				// zaproxy.org 
+		- Provided by OWASP. 
+	+ Commercial tools: Netsparker, Burp Suite. 
+
+
+
+
+
+
+_ Jenkins _ 
+
+* Global security settings: 
+	+ Markup formatting: 
+		- Default: plain text. 
+		- Safe HTML: basic formatting. 
+		- Custom formatters (plugins). 
+	+ CSRF: 
+		- Process: 
+			; Hacker embeds request into hyperlink. 
+			; Sends it to user that is logged into Jenkins. 
+			; User clicks on link. 
+			; Jenkins executes unauthorized build. 
+		- Protection: 
+			; Crumb Issuer: Jenkins checks for special token, the crumb. 
+
+* Scaling: 
+	- Horizontal: 
+		; Easier to scale out quickly by simply adding more workers. 
+		; Improves fault tolerance: if 1 machine fails, the other can handle the work load. 
+	- Vertical: 
+		; Scale up by upgrading our existing machines. 
+		; More CPU + memory. 
+	- Jenkins: 
+		; Vertical scaling may not even fix the issues when the Controller node is overwhelmed: 
+			` Garbage collection cycles may take even longer with more memory. 
+			` It is still a single point of failure. 
+		; At some point, we need to scale out (horizontally), by adding worker nodes. 

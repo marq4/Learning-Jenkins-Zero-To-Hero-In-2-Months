@@ -1,0 +1,26 @@
+* Tips: 
+	+ Keep Blue Ocean open to monitor the execution of the new stage in the incremental Jenkinsfile. 
+	+ To fulfill the requirement of triggering a new job after code changes are commited you'll need:
+		- Ngrok. 
+		- A GitHub webhook. 
+		- Enable hook trigger on Jenkins. 
+	+ If something goes wrong with the webhook: 
+		- Open the ngrok web UI: http://localhost:4040. 
+		- Inspect the Jenkins logs: 
+			$ docker logs d4 
+		- Keep the GitHub webhook web UI open and inspect the RESPONSEs. 
+	+ Execute ngrok in a new Git Bash windows as it takes over and displays useful info (such as the URL). 
+	+ Install dependencies: 
+		$ npm install --no-audit 
+	+ For dependency scanning we can declare a parent stage and 2 sub-stages. 
+		- $ npm audit --audit-level=critical 
+		- For OWASP dep check get the step syntax from: 
+			' Jenkins > Learning Jenkins Inc Org Folder > solar-system repo > feature branch > Pipeline Syntax > Snippet Generator > Step: Dependency Check > Arguments: consult documentation (https://dependency-check.github.io/DependencyCheck/dependency-check-cli/arguments.html) > Generate Pipeline Script. 
+			' Since we are using NPM, NOT YARN (another JS package manager), we can either ignore these errors: "Exception occurred initializing Yarn Audit Analyzer" / "Unable to read yarn audit output", or disable YARN. 
+			' The build is stopped / failed in case of vulnerabilities via the publisher. 
+	+ Code coverage command: 
+		- $ npm run coverage 
+	+ SonarQube: 
+		- withSonarQubeEnv requires the name of the SonarQube server defined under System. 
+		- We need to also wait for the quality gate. 
+		- Wrap those 2 steps around a timeout of 10 minutes. 

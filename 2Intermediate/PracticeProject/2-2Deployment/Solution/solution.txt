@@ -1,0 +1,82 @@
+* Solution: 
+	+ Start Docker, start Jenkins container, log into Jenkins: 
+		- $ docker start jenkins-controller-container 
+	+ Execute Ngrok. 
+	+ Clone solar-system project again and create a new feature branch: 
+		- $ git branch -a 
+		- $ git checkout -b feature/deployment origin/feature/enable-cicd 
+	// Continous Deployment: 
+	+ Get an EC2 instance up and running: 
+		- Log into AWS Console. 
+		- Go to your favorite region that has a default VPC: us-west-2 (Oregon). 
+		- EC2 > Launch instance: 
+			; Name: LearningJenkins. 
+			; OS: Ubuntu. 
+			; Type: t3.micro. 
+			; Key pair: SSHAccess. 
+			; Allow HTTP traffic from the internet. 
+			; Launch instance. 
+		- Wait for instance to be in the "Running" state and checks to pass. 
+		- Copy "Public DNS" value. 
+		- Connect to it: 
+			; $ ssh -i SSHAccess.pem ubuntu@ec2-18-246-244-210.us-west-2.compute.amazonaws.com
+				The authenticity of host 'ec2-18-246-244-210.us-west-2.compute.amazonaws.com (18.246.244.210)' can't be established.
+			; YES. 
+			; $ hostname 
+				ip-172-31-22-7
+		- Install Docker: 
+			; $ sudo apt update 
+			; $ sudo apt install apt-transport-https ca-certificates curl software-properties-common 
+			; $ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg 
+			; $ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null 
+			; $ sudo apt update 
+			; $ sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 
+		- Verify: 
+			; $ sudo docker run hello-world 
+				Hello from Docker! 
+		- Create new user and provide permissions: 
+			; AWS Console > IAM. 
+			; New user: jenkins, Attach policies directly, Full access to: EC2, S3, Lambda. 
+		- Create access key for this new user: 
+			; Select user jenkins. 
+			; Tab: Security credentials. 
+			; Access keys > Create access key > copy values to a notepad. 
+		- Install "Pipeline: AWS Steps" plugin. 
+		- Create credentials: 
+			; Manage Jenkins > Credentials > Global > AWS Credentials: 
+				` ID: aws-jenkins-technical-user-creds. 
+				` Description: Access Keys for jenkins AWS IAM user. 
+				` Create. 
+			; Go back to these creds > Update > you should see: "Creds valid & have access to 6 AZs". 
+	+ Allow Jenkins to connect to the instance: 
+		- Install "SSH Agent" plugin. 
+		- Manage Jenkins > Credentials > Global > Add credentials > SSH Username with private key: 
+			; ID: ubuntu-ssh-key-pair-ec2. 
+			; Description: SSH key pair for ubuntu user to access EC2. 
+			; Username: ubuntu. 
+			; Private key: paste value of: $ cat SSHAccess.pem 
+			; Create. 
+	+ Next stage: Deploy Docker image to EC2: 
+		- Jenkinsfile.12 
+		- Quick hack in case of "permission denied" error: 
+			; Connect to Jenkins container: 
+				` $ winpty docker exec -it -u root 1f bash 
+				` $ chmod 666 /var/run/docker.sock
+		- Verify app is running inside EC2: 
+			; Instance > Security Group > Edit inbound rules > Add rule: 
+				` Port range: 3000. 
+				` Source type: Anywhere-IPv4. 
+				` Save rules. 
+			; http://ec2-18-246-244-210.us-west-2.compute.amazonaws.com:3000 
+	// Integration Testing: 
+	+ Install AWS CLI and jq in Jenkins container: 
+		- $ apt update 
+		- $ apt install jq 
+		- $ apt install unzip curl 
+		- $ cd /root/ 
+		- $ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" 
+		- $ unzip awscliv2.zip 
+		- $ ./aws/install 
+		- $ aws --version 
+	+ Jenkinsfile.13 + integration-testing-ec2.sh. 
+	+ Terminate the EC2 instance to avoid incurring in costs. 

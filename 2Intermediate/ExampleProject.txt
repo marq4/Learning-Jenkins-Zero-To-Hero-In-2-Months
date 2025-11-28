@@ -1,0 +1,31 @@
+* NodeJS app. 
+
+_ DevOps Pipeline _
+
+* CI: 
+	1.- Install dependencies + Build. 
+	2.- OWASP dependency check + NPM dep audits. 
+	3.- Code coverage + Unit testing. 
+	4.- SAST (static code analysis) quality gates. 
+	5.- Dockerize + vulnerability scan + push image. 
+
+* C Deployment: 
+	6.- AWS EC2 VM deploy. 
+	7.- Integration testing. 
+	// Dev create PR. 
+
+* C Delivery: 
+	8.- Update Docker image tags + K8 deploy. 		// GitOps-ArgoCD. 
+	9.- DAST (dynamic app security testing) OWASP ZAP. 
+	10.- Approval stage. 
+	11.- AWS Lambda deploy. 
+	12.- Lambda testing. 
+
+* Post Build: 
+	13.- Unit Test reports. 
+	14.- Code Coverage reports. 
+	15.- Vulnerability reports. 
+	16.- Dependency Scan reports. 
+	17.- Publish to Jenkins. 
+	18.- Publish to AWS S3. 
+	19.- Slack notifications. 
