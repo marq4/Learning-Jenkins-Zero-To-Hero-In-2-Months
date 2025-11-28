@@ -1,0 +1,40 @@
+// Declarative.
+pipeline {
+  agent any
+  stages {
+    stage('Verify tools') {
+      steps {
+        sh '''
+          python --version
+          poetry --version
+          docker version
+        '''
+      }
+    }
+
+    stage('Display PR #') {
+      when {
+        changeRequest( target: 'main' )
+      }
+      steps {
+        echo "PR: ${CHANGE_ID}. CHANGE_BRANCH=>${CHANGE_BRANCH}. CHANGE_TARGET=>${CHANGE_TARGET}. "
+      }
+    }
+
+    stage('Setup') {
+      steps {
+        dir('marq4') {
+          sh ' poetry install --with dev '
+        }
+      }
+    }
+
+    stage('Unit testing') {
+      steps {
+        dir('marq4') {
+          sh ' poetry run pytest -vvv '
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+A1: 
+	+ It will fail with: 
+		groovy.lang.MissingPropertyException: No such property: DB_HOST. 
+	+ Because 'Test' stage does not have access to that env var (only 'Init' stage does). 
+
+A2: 
+	+ Single server is acceptable for: 
+		- Dev/test environments. 
+		- POC demos. 
+		- Very low-traffic apps where cost optimization is critical & some downtime is acceptable. 
+	+ Single server is unsuitable for production because: 
+		- We must avoid single point of failure: IF the EC2 instance fails, the entire app becomes unavailable. 
+		- Doesn't scale: doesn't handle traffic spikes. 
+	+ Instead we do:
+		- For a small/simple app: serverless: no server management, auto-scales, pay-per-use. 
+		- Otherwise: multi-server architecture with: 
+			; Load Balancer: distributes traffic. 
+			; Auto Scaling Group: auto adjust capacity based on demand. 
+			; Multi-AZ deployment: spread instances across Availability Zones for fault tolerance. 
+			; Health checks: auto replace unhealthy instances. 
+

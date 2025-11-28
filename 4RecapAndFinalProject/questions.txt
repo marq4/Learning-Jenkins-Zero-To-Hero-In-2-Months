@@ -1,0 +1,29 @@
+* Q1: What will happen when this pipeline is built: 
+	pipeline {
+		agent any
+		stages {
+			stage('Init') {
+				environment {
+					DB_HOST = '192.168.12.1'
+				}
+				steps {
+					sh " init.sh ${DB_HOST} "
+				}
+			}
+			stage('Test') {
+				steps {
+					echo "Data Base IP is: ${DB_HOST}. "
+				}
+			}
+		}
+	}
+
+
+* Q2: Why do we only do single server deployment for development/testing, and what do we do 
+	instead for production? 
+
+
+
+
+
+

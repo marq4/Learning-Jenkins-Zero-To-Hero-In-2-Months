@@ -1,0 +1,8 @@
+* Tasks: 
+	+ Manually copy the app code over to a single AWS EC2 instance. 
+	+ Manually configure the app to run as a service (starts on boot, always running). 
+	+ Update pipeline from previous practice challenge to copy code over to the single EC2 server, 
+		and make sure our app is running the latest code that we pushed to Git. 
+
+* Notes: 
+	+ The proposed solution uses Amazon Linux. 

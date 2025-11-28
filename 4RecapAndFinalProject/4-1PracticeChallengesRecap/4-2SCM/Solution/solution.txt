@@ -1,0 +1,44 @@
+* Solution: 
+	+ Since we obviously can't push changes to the original example repo by Sanjeev, we need to fork it:
+		- Go to this final project's repo: https://github.com/kodekloudhub/course-jenkins-project 
+		- Click the "Fork" button. 
+		- Repository name: JenkinsZero2HeroIn2MonthsFinalProjectFlaskApp. 
+		- Description: This is a simple example To-Do list Python-Flask web app to practice Jenkins CICD. 
+		- Copy the main branch only. 
+		- Create fork. 
+		// It has to remain public. IF you want this example Python code private in your GitHub account, clone the repo locally and upload to a new private repo instead. 
+	+ Start Docker Desktop, and the Jenkins container. Log into Jenkins. 
+	+ Jenkins Dashboard > New Item > Folder: "FinalProject" > Save. 
+	+ New Item > Freestyle: "4-2SCM". 
+		- Description: Just to verify integration with GitHub. 
+		- Source Code Management > Git > Repository URL: provide the URL for your fork or private copy. 
+			; You will need to provide credentials if the repo is private. Basically create a PAT (Personal Access Token) for your GitHub user and add it to Jenkins (never give Jenkins a real password you use for a personal account). 
+		- Branch Specifier: */main. 
+		- Triggers: GitHub hook trigger for GITScm polling. 
+		- Build Steps > Execute shell > Command: ls -ltra				// LiSt files and directories. Options: (Long) display detailed information, see permissions & owners; sort by latest modification Time (most recent at the top); Reverse so oldest files appear first which is usefull to see the latest at the bottom (imagine a ton of files/dirs); All: show hidden files (even . ..). 
+		- Execute manually once to verify the connection between GitHub and Jenkins by clicking "Build Now". 
+		- For automated builds, i.e. to have GitHub notify Jenkins that changes have been pushed to the repo, we need to set up a webhook: 
+			// Obviously you can't specify "http://localhost:8080" as the Payload URL, that's why we use Ngrok. For details refer to previous courses. 
+			// If your Jenkins is running on AWS EC2 then use the Public IPv4 address or Public IPv4 DNS name. 
+			; Start Ngrok: 
+				~ $ ngrok http 8080 --log=stdout 
+				# Copy the URL (e.g.: https://transparent-dahlia-tripinnately.ngrok-free.dev). 
+			; At your GitHub repo > Settings > Webhooks > Add webhook. 
+			; Payload URL: paste the ngrok URL + /github-webhook/.  
+			; Content type: application/json. 
+			; Add webhook. 
+			// In case of 403 "No valid crumb was included in the request" check if you forgot to add "/github-webhook/" to the Payload URL. 
+			// Give it a couple seconds, reload if needed, and you should see a green tick or checkmark which indicates that a ping request was successful. 
+			- Test it by making some changes to the code and pushing to GitHub: 
+				~ GitHub repo > <> Code > HTTPS > Copy URL to clipboard. 
+				~ Open a Git Bash window locally. 
+				~ $ git clone <PASTE the .git>. 
+				~ Update the README.md under 01-jenkins-basics/. 
+				~ $ git status 
+				~ $ git add . 
+				~ $ git status 
+				~ $ git commit -m "Updated ReadMe to test webhook. " 
+				~ $ git push 
+				~ Go back to the ngrok window and verify an event has been logged (e.g.: t=2025-11-19T12:00:09-0600 lvl=info msg="join connections" obj=join id=48ba724b986e l=[::1]:8080 r=140.82.115.159:54046).  
+				~ A new Build should have been triggered: Started by GitHub push by <USER>. 
+	+ At this point Jenkins should automatically Build our code whenever we push changes to the repo. 

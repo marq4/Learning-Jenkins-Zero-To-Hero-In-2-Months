@@ -1,0 +1,92 @@
+// Declarative.
+pipeline {
+  agent any
+
+  environment {
+    EC2_SERVER = 'ec2-54-190-49-10.us-west-2.compute.amazonaws.com'
+    APP_ZIP = 'myapp.zip'
+    EC2_HOME = '/home/ec2-user'
+    APP_FOLDER = 'App'
+    DEPLOY_SCRIPT = 'deploy.sh'
+    PORT = '5000'
+  }
+
+  options {
+    skipDefaultCheckout()
+  }
+
+  stages {
+    stage('Code checkout') {
+      steps {
+        checkout scm
+        sh ' ls -ltra '
+      }
+    }
+
+    stage('Python version') {
+      steps {
+        sh ' python --version '
+      }
+    }
+
+    stage('Setup') {
+      steps {
+        dir('01-jenkins-basics') {
+          sh '''
+            echo 'Create Python virtual environment. '
+            python -m venv venv
+            echo 'Upgrade pip module. '
+            ./venv/bin/python -m pip install --upgrade pip
+            echo 'Install project dependencies. '
+            ./venv/bin/python -m pip install -r requirements.txt
+          '''
+        }
+      }
+    }
+
+    stage('Unit testing') {
+      steps {
+        dir('01-jenkins-basics') {
+          sh ' ./venv/bin/python -m pytest -vvv '
+        }
+      }
+    }
+
+    stage('Package code') {
+      steps {
+        dir('01-jenkins-basics') {
+          sh """
+            rm -f ${APP_ZIP}
+            zip -r ${APP_ZIP} app.py requirements.txt ${DEPLOY_SCRIPT} templates/
+            ls -ltra
+          """
+        }
+      }
+    }
+
+    stage('Deploy to EC2') {
+      steps {
+        dir('01-jenkins-basics') {
+          withCredentials([
+            sshUserPrivateKey(
+              credentialsId: 'AWS-EC2-SSH-private-key',
+              keyFileVariable: 'SSH_KEY',
+              usernameVariable: 'user')])
+          {
+            sh """
+              scp -i ${SSH_KEY} -o StrictHostKeyChecking=no ${APP_ZIP} \
+                ${user}@${EC2_SERVER}:${EC2_HOME}/
+              ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no \
+                ${user}@${EC2_SERVER} ' bash -c \
+                  "unzip -o ${EC2_HOME}/${APP_ZIP} -d ${EC2_HOME}/${APP_FOLDER}/ && \
+                  chmod u+x ${EC2_HOME}/${APP_FOLDER}/${DEPLOY_SCRIPT} && \
+                  ${EC2_HOME}/${APP_FOLDER}/${DEPLOY_SCRIPT} && \
+                  rm -f ${EC2_HOME}/${APP_ZIP}" '
+            """
+          }
+          echo "To see the app running visit: http://${EC2_SERVER}:${PORT}"
+        }
+      }
+    }
+  }
+}

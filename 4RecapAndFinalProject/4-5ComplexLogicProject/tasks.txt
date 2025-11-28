@@ -1,0 +1,13 @@
+* Tasks: 
+	+ Create 2 Jenkins pipelines: 
+		- Code Quality: on PR to main or push to any other branch. 
+		- Release: deploys Git Release to PROD on merge to main: 
+			~ Bump SemVer. 
+			~ Tag the commit & Git release. 
+			~ Dockerize. 
+			~ Deploy to PROD (K8). 				// Or simply echo out kubectl commands. 
+
+* Notes:
+	+ Use Poetry. 
+	+ Do not even attempt to work with K8. Simply echo out the kubectl commands. 
+	+ Make sure these Jenkins pipelines run at top speed. 

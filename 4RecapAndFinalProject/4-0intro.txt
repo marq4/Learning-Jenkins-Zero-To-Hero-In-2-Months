@@ -1,0 +1,33 @@
+* Project: create a robust, scalable & automated CICD pipeline for a Flask (Python) web app, using: 
+	Jenkins, Docker, K8, AWS Cloud - EKS. 
+	+ Code repository: https://github.com/kodekloudhub/course-jenkins-project 
+
+* Technologies + concepts: 
+	+ Jenkins: 
+		- Jobs. 
+		- Pipelines. 
+		- Integrating with Git. 
+		- Unit Testing with Pytest. 
+		- Build Triggers. 
+		- Environment Variables. 
+		- Credentials. 
+		- Jenkinsfile: nested & parallel stages. 
+		- Options, parameters, user inputs. 
+	+ AWS: 
+		- Single server deployment in EC2. 
+		- Deploying to Lambda & Serverless App Model (SAM). 
+	+ Docker: 
+		- Containerization. 
+		- Building custom images. 
+		- Dockerfile. 
+	+ K8 (Kubernetes): 
+		- EKS Cluster. 
+		- Pods. 
+		- Replicas. 
+		- Deployments. 
+		- Services. 
+	+ Acceptance testing with K6. 
+	+ Final Project: 
+		- Trigger a pipeline only on PR (pull request). 
+		- Create a Release in Git. 
+		- Bump up semantic version using "Conventional Commits" tool. 

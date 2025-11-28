@@ -1,0 +1,62 @@
+* Solution: 
+	+ Start Docker Desktop & Jenkins container, log into Jenkins. 
+	+ Start Ngrok. 
+	+ Make sure this final project's Jenkins jobs will run at full speed: 
+		- Manage Jenkins > System > Pipeline Speed / Durability > Perf-optimized. 
+		- %%% ToDo (next time): implement caching + stashing for the dependencies. 
+	+ Write Jenkinsfile-CodeQuality, Jenkinsfile-Release. 
+	+ Create GitHub PAT and add it as credentials in Jenkins if needed. 
+	+ Create repository in Docker Hub: jenkins-flask-app. 
+	+ Either run the pipelines in the worker container or install Docker in the Controller-Agent: 
+		# Remove the container and recreate it mounting the host's Docker socket: -v //var/run/docker.sock:/var/run/docker.sock 
+		- $ winpty docker exec -it -u root advanced-jenkins-cont bash 
+		- $ apt update 
+		- $ install -m 0755 -d /etc/apt/keyrings 
+		- $ curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg 
+		- $ chmod a+r /etc/apt/keyrings/docker.gpg 
+		- $ echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null 
+		- $ apt update 
+		- $ apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 
+		- $ chmod 666 /var/run/docker.sock 
+		- $ docker info 
+	+ Install Python in the Agent if needed:
+		- $ apt update && apt install python3 
+		- $ update-alternatives --install /usr/bin/python python /usr/bin/python3 1 
+	+ Install Poetry in the Jenkins Agent (as root):
+		$ apt-get update 
+		$ apt-get install -y python3-poetry 
+	+ Install Pip in the Agent: 
+		$ apt-get install python3-pip 
+	+ Copy pyproject.toml over from Sanjeev's location (06-advanced-project) over to a subfolder of your own (in my case marq4). 
+		- Remove this line in case of error: "Poetry configuration invalid, package-mode unexpected": 
+			~ package-mode = false
+	+ Copy tests and app files "test_app.py", "app.py" over to final project subfolder. 
+	+ Copy templates folder over as well. 
+	+ Copy the Dockerfile over as well. 
+	+ Copy the requirements file over as well. 
+	+ Jenkins Dashboard > FinalProject folder > New folder: "ComplexLogic". 
+	+ New Item > Multibranch Pipeline: "CodeQuality". 
+	+ Branch Sources > GitHub: 
+		- Credentials: <PAT>. 					// Even for public repo to not get rate-limited. 
+		- URL: provide your fork of kodekloud/course-jenkins-project. 
+		- Discover branches: Exclude branches that are also files as PRs. 
+		- Discover PR from origin: Merging the PR with current target branch revision. 
+		// Exclude main: 
+		- Add > Filter by name (wildcards): 
+			~ Include: *. 
+			~ Exclude: main. 
+	+ Script Path: Jenkinsfile-CodeQuality. 
+	+ Scan Multibranch Pipeline Triggers: Periodically: 2min. 
+	+ New Item > Pipeline: "Release". 
+	+ Additional Behaviours > Add: 
+		- Advanced clone > Fetch tags. 
+		- Check out to specific local branch: main. 
+	+ Test it: 
+		- Create a new feature branch, change something. 
+		- Commit message: "feat: ..."
+		- Push: code should be built and tested. 
+		- Go to GitHub > create Pull Request: code should be built and tested again (under PR tab). 
+			~ Make sure to select YOUR personal fork as base (not KodeKloud's original upstream repo). 
+		- Merge pull request (to main): release pipeline should run (twice): 
+			~ No tag, "The next version is: 0.1.0!". New commit in GitHub is just that number. Skips remaining stages. 
+			~ YES tag, "Commit message: 0.1.0". GIT_TAG is set. Verify Release (latest) under "Releases" on the GitHub repo. 

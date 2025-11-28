@@ -1,0 +1,72 @@
+* Solution: 
+	+ Start Docker Desktop, start the Jenkins container (Controller), log into Jenkins. 
+	+ Log into the AWS Console. 
+	+ Choose a Region that has the default VPC (with a default public subnet). 
+	+ Go to EC2 service > Launch instance: 
+		- Name: Demo. 
+		- AMI: Amazon Linux 2023, 64-bit (default). 
+		- Instance type: t3.micro (default). 			// Make sure it's free tier eligible. 
+		- Key pair: select the SSH key pair you use to connect to your EC2 instances. 
+		- Network settings: 
+			; Allow SSH traffic from anywhere (default). 	// Or you won't be able to connect to it. 
+			; Allow HTTP(S) traffic from the internet. 	// As this is a web app. 
+		- Launch instance. 
+	+ Go to the instance page > 
+		- Copy Public DNS name to a notepad. 
+		- Go to Security tab > Security groups > open the SG > Edit inbound rules > Add rule: 
+			~ Custom TCP, Port: 5000, Source: Anywhere-IPv4, Description: Flask web app listens on port 5,000. 
+			~ Save rules. 
+	+ Go to instances page and verify "Demo" instance is in "Running" state, and status checks have passed. 
+	+ Connect to it: 
+		- Open Git Bash locally where you keep your pem file (secret SSH key). 
+		- $ ssh -i SSHAccess.pem ec2-user@ec2-54-190-49-10.us-west-2.compute.amazonaws.com 
+		- Since this is a new host that your local SSH has never seen before you will be asked if you're sure. Say yes. 
+	+ Create a new folder to store our application code: 
+		- $ mkdir -p /home/ec2-user/App/ 
+	+ Move into it: 
+		- $ cd /home/ec2-user/App/ 
+	+ Verify Python 3 is already installed: 
+		- $ python3 --version 			# Python 3.9.24 
+	+ Create a Python virtual environment for our app: 
+		- $ python3 -m venv venv && ls 
+	+ Create the systemd unit file: 
+		- Create and open the new systemd unit file (with superuser privileges): 
+			~ $ sudo vi /etc/systemd/system/flaskapp.service  
+		- Copy the contents of flaskapp.service file and paste them (:set paste, <i>, <Ctrl>+<Insert>, <Esc>, :wq <Enter>). 
+	+ Reload the system daemon: 
+		- $ sudo systemctl daemon-reload 
+	+ Zip and copy the app code over:
+		- Open a Git Bash window as admin and run (locally): 
+			~ $ choco install zip 
+		- Open another Git Bash window under your local copy of the repo, under 01-jenkins-basics folder. 
+		- Zip the files into a single archive: 
+			~ $ zip -r app.zip ./* -x .gitignore 
+		- Copy it over to the server: 
+			~ $ scp -i SSHAccess.pem app.zip ec2-user@ec2-54-190-49-10.us-west-2.compute.amazonaws.com:/home/ec2-user/ 
+	+ Execute app: 
+		- $ unzip app.zip -d /home/ec2-user/App/ 
+		- $ cd App/ 
+		- $ ./venv/bin/python3 -m pip install --upgrade pip 
+		- $ ./venv/bin/python3 -m pip install -r requirements.txt 
+		- $ sudo systemctl restart flaskapp.service 
+	+ Open the server's DNS name with port 5,000 to verify app is running: http://ec2-54-190-49-10.us-west-2.compute.amazonaws.com:5000/ 
+	+ Enable our app service: 
+		- $ sudo systemctl enable flaskapp.service 
+		- $ systemctl status flaskapp.service 
+	+ Install zip in the Jenkins Controller container: 
+		- $ winpty docker exec -it -u root advanced-jenkins-cont bash 
+		- $ apt update && apt install zip 
+	+ Create Jenkins credentials for SSH: 
+		- Manage Jenkins > Credentials > (global) > Add Credentials. 
+		- SSH Username with private key. 
+		- ID: AWS-EC2-SSH-private-key. 
+		- Username: ec2-user. 
+		- Private Key > Enter directly > Add > paste the contents of your pem file. 
+	+ Configure pipeline. 					// Jenkinsfile-EC2 
+		- Jenkins Dashboard > FinalProject folder > New Item: Pipeline, "SingleServerDeployment". 
+		- Triggers: GitHub hook trigger for GITScm polling. 
+		- Branch: main. 
+		- Script Path: 01-jenkins-basics/Jenkinsfile-EC2. 
+	+ Make some changes to the code (e.g.: add some text to the title at the index.html), commit+push, 
+		build the pipeline manually if not running the webhook, verify it with your web browser. 
+	+ Terminate the instance. 					// Or you WILL be charged, even at free tier, given enough time. 

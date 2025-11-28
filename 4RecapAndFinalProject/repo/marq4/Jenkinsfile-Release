@@ -1,0 +1,83 @@
+// Declarative.
+pipeline {
+  agent any
+
+  environment {
+    IMAGE_NAME = 'marq4/jenkins-flask-app'
+    IMAGE_TAG = "${IMAGE_NAME}:${env.GIT_COMMIT}"
+    //KUBECONFIG = credentials('kubeconfig')
+    //AWS_ACCESS_KEY_ID = credentials('aws-access-key')
+    //AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+    // Semantic-release looks for GH_TOKEN or GITHUB_TOKEN:
+    GH_TOKEN = credentials('GitHubPAT4Jenkins')
+  }
+
+  stages {
+    stage('Check for Git Tag') {
+      steps {
+        script {
+          def tag = sh(script: 'git tag --contains', returnStdout: true).trim()
+          if (tag != null) {
+            env.GIT_TAG = tag
+          } else {
+            env.GIT_TAG = ''
+          }
+          echo "Git Tag => ${env.GIT_TAG}. "
+          env.IMAGE_TAG_RELEASE = "${IMAGE_NAME}:${GIT_TAG}"
+        }
+      }
+    }
+
+    stage('Setup') {
+      steps {
+        dir('marq4') {
+          sh ' poetry install --with dev '
+        }
+      }
+    }
+
+    // IF there is NO Tag:
+    stage('Create Release (set Tag)') {
+      when { expression { return env.GIT_TAG == '' } }
+      steps {
+        dir('marq4') {
+          script {
+            // Get next version numbers:
+            def tag = sh(script: 'poetry run semantic-release version', returnStdout: true).trim()
+            echo "New Tag => ${tag}. "
+            // Create new commit in GitHub with Tag & Release:
+            sh ' poetry run semantic-release publish '
+          }
+        }
+      }
+    }
+
+    // IF there IS a Tag:
+    stage('Containerize & Deploy to PROD') {
+      when { expression { return env.GIT_TAG != '' } }
+      stages {
+        stage('Dockerize') {
+          steps {
+            withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
+              usernameVariable: 'USER', passwordVariable: 'TOKEN')])
+            {
+              sh """
+                echo \$TOKEN | docker login -u \$USER --password-stdin
+                docker build -t ${IMAGE_TAG} -t ${IMAGE_TAG_RELEASE} marq4/
+                docker push --all-tags ${IMAGE_NAME}
+              """
+            }
+          }
+        }
+
+        stage('Deploy to EKS (fake)') {
+          steps {
+            echo 'kubectl config use-context user@prod'
+            echo 'kubectl config current-context'
+            echo "kubectl set image deployment/flask-app flask-app=${IMAGE_TAG_RELEASE}"
+          }
+        }
+      }
+    }
+  }
+}

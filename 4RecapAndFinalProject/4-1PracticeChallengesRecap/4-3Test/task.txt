@@ -1,0 +1,5 @@
+* Task: 
+	+ Configure Unit Testing with Pytest via Jenkinsfile. 
+
+* Requirements: 
+	+ Explicit checkout. Do not check out twice (skip default check out). 

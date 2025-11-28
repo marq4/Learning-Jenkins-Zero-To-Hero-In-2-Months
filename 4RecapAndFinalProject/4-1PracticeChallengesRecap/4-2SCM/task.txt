@@ -1,0 +1,7 @@
+* Task: 
+	+ Integrate Jenkins with GitHub so that whenever a developer commits a change, 
+		a Build is automatically triggered. 
+
+* Notes: 
+	+ Suggested command: display all files and directories (including hidden), 
+		latest-modified at the bottom. 

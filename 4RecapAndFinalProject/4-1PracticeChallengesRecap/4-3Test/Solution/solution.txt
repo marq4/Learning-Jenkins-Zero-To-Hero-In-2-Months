@@ -1,0 +1,26 @@
+* Solution: 
+	+ Start Docker Desktop, the Jenkins container, and log into Jenkins. 
+	+ Execute Ngrok. 
+	+ Jenkins Dashboard > FinalProject (folder) > New Item > Pipeline, Name: "AutomatedUnitTestingWithJenkinsfile". 
+	+ Triggers: GitHub hook trigger for GITScm polling. 
+	+ Pipeline > Pipeline script from SCM. 
+		- SCM: Git. 
+		- Branch: main. 
+		- Script Path: 01-jenkins-basics/Jenkinsfile-Pytest. 
+	+ Go to your local repo > 01-jenkins-basics folder. 
+	+ Create file Jenkinsfile-Pytest. 					// For learning purposes we are using the option and the explicit checkout stage. Neither are needed as Jenkins will checkout the code by default (implicit). 
+	+ Take a look at the unit tests under test_app.py. 
+	+ Take a look at the requirements: requirements.txt. 
+	+ If pipeine failes with this error: script.sh.copy: 1: python: not found, do: 
+		- Install Python in the container: 
+			~ Connect to the container as root user: 
+				` $ winpty docker exec -it -u root 5f bash 
+				` $ apt update && apt install python3 
+				` $ apt install python3.11-venv 
+				` $ python3 --version 
+				` $ python3 -m venv -h 
+				` $ update-alternatives --install /usr/bin/python python /usr/bin/python3 1 
+				` $ exit 
+		- Build again. 
+	+ Look for PASSED & 100% under the Unit testing stage. 
+	+ Suggestion: open Blue Ocean to monitor the Build. 

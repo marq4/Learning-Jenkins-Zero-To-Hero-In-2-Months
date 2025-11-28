@@ -1,0 +1,607 @@
+* Continuous Integration (CI): cycle of constantly making changes to the code base, building it, and (auto) testing it. 
+	Build -> Test. 
+
+* CD: 
+	+ Continuous Delivery: after tests pass, manual approval is required for code to be deployed to production. 
+	+ Continuous Deployment: automatically get latest code to (optionally) Staging env, and then to PROD. 
+
+
+* What is Jenkins? 
+Ans: 
+	+ A popular open-source CI/CD tool. 
+	+ To set up CI and CD pipelines. 
+	+ Example: I have a web app hosted on GitHub. 				// GitHub: a web-based platform that uses Git to provide a place for software developers to store, manage, and share code. 	Git: a DVCS (Distributed Version Control System) to track changes in files, especially source code (such as a Python web application) and facilitate collaboration among multiple devs. 
+		- I can have Jenkins take a look at new code whenever I commit, 
+		- Automatically Build (compile, package, etc.) the project's code, 
+		- Perform any formatting, linting, 
+		- Testing, 
+		- And get the latest code to the server where my users can access it (deploy/delivery). 
+		- All of these tasks are performed automatically (no manual intervention required). 
+
+// Linting: automated process of analyzing source code for potential errors, stylistic inconsistencies, and other issues. 
+// A linter is the program that performs this analysis by checking code against a set of predefined rules to enforce coding standards and improve quality. 
+// Example: Pylint for PEP8, the "official" Python style. 
+
+* Why use Jenkins? 
+Ans: 
+	+ It's free & open-source (no licenses). 
+	+ Trivial to set up. 
+	+ Can run on Windows, Mac, or Linux; on-prem or on the Cloud. 
+	+ Has a large & active community because many people use it. 
+	+ Tons of plugins: integrates with Docker & K8. 
+	+ Can scale up by distributing Builds across multiple machines. 
+	+ Detailed reporting & logging. 
+
+* Why CICD automation? 
+Ans: 
+	+ Teams would have to build & deploy their software manually, which is time-consuming & error-prone. 
+	+ Manual processes lack consistency: "works on MY machine" but not in the production environment. 
+	+ Increased risk of human error: forgetting steps, making typos, which leads to failed builds, wasted time, faulty deployments. 
+	+ Slower release cycles. 
+
+* Jenkins Job: set of instructions to tell Jenkins what to do. A.k.a.: Project. 
+
+* Create the simplest possible pipeline: 
+	1.- Log into Jenkins (usually port 8080). 
+	2.- Dashboard > New Item. 
+	3.- Pipeline. 
+	4.- Pipeline script > try sample > Hello World: 
+		// Declarative. 
+		pipeline {
+			agent any 
+			stages {
+				stage('Say hello') {
+					steps {
+						echo "Hello Jenkins!"
+					}
+				}
+			}
+		}
+	5.- Save. 
+	6.- Build Now. 
+	7.- Console Output. 
+
+* Practice challenge: run this "Hello Jenkins" pipeline. 
+	+ Prerequisite: have Jenkins up & running either locally as a Docker container, or on AWS EC2. 
+		- If you've completed the previous courses just do: 
+			; $ docker ps -a 
+			# You should have this container: advanced-jenkins-cont. 
+			; $ docker start 57 					# 57cbea428918 is the CONTAINER ID of advanced-jenkins-cont container. 
+			; $ docker ps 
+			# Verify it's running. If it isn't do: $ docker logs 57, and give Claude.ai the last few lines. 
+			; Log into Jenkins: http://localhost:8080/ 		// Admin / qwerty 
+
+
+* Integrate with GitHub: 
+	+ Create a new Jenkins Freestyle project: 
+		- SCM: Source Code Management. 
+		- Git > provide repo URL. 					// This final project: https://github.com/kodekloudhub/course-jenkins-project. 
+		- Provide credentials if repo is private. 
+		- Branch: */main. 
+		- Build Triggers > GitHub hook trigger for GITScm polling. 		// Have GitHub notify Jenkins when changes are pushed to repo. 
+		- Build Steps > Execute shell > echo "Building code." 
+	+ On the GitHub repo: 
+		- Settings. 
+		- Webhooks > Add. 
+		- Payload URL: <JENKINS_URL>:8080/github-webhook/. 
+		- Content type: application/json. 
+		- Events: push. 
+		- Verify check mark. 
+	+ Go back to Jenkins and build the project manually once. 
+	+ Now every time a dev commits/pushes code changes to main branch, Jenkins will automatically build them. 
+
+
+* Unit Testing with Pytest via Jenkinsfile: 
+	+ Pipeline > Definition > Pipeline script from SCM. 
+	+ SCM: Git. 
+	+ Install requirements with pip module. 
+	+ Run tests with Pytest command. 
+	+ Prevent duplicated code checkout by using option: skipDefaultCheckout. 
+
+
+* Build Triggers: 
+	+ Determine when Jenkins runs a job. 
+	+ Event -> Jenkins -> Action. 
+	+ Kinds: 
+		- Build after another project is built. 
+		- Build periodically. Example: every day 5pm: 0 5 * * *. 
+		- GitHub hook trigger polling. Events: push, pull request, etc. 
+		- Poll SCM: Jenkins continuously polls GitHub to see if there's any changes to code base @ some interval, e.g. every hour: H * * * *. 
+		- Remotely: using endpoint URL + token. 
+			; Authentication Token: qwerty, or whatever, this isn't actually Jenkins Credentials, 
+				just any text we want. 
+			; Jenkins automatically provides the URL endpoint bellow the token text box. 
+			; We can literally simply paste the URL with the token into a web browser to 
+				remotely trigger a build, as this is a simple HTTP GET request. 
+	+ Quiet period: is a delay. By default Jenkins waits 5 seconds before actually beginning the build. 
+		- This is done to prevent multiple unnecessary builds for related code changes committed 
+			in a short period of time, and instead group them together. 
+
+
+* Environment Variables: 
+	+ Key-value pairs. 						// Strings always. 
+	+ Use them to avoid hard-coding API keys into the Jenkinsfile. 
+	+ Types: 
+		- System, e.g. PATH. 
+		- Jenkins built-in, e.g. BUILD_ID, BUILD_NUMBER, BUILD_TAG, BUILD_URL, EXECUTOR, JAVA_HOME, JENKINS_URL, JOB_NAME, NODE_NAME, WORKSPACE. 
+			; Use them: "${env.GIT_COMMIT}"
+	+ Scope: 
+		- Global: all jobs. 
+		- Within a job. 
+		- In a Pipeline script, in a specific stage. 
+		- Example: 
+			pipeline {
+				environment { 
+					MY_VAR = 'value'
+			...
+						echo "${MY_VAR}" 
+	+ IF only one stage needs an env var, only set it on that stage. 
+	// Although the naming convention is MY_VAR all uppercase, they are mutable (not constant). 
+	// Consider question Q1. 
+
+
+* Credentials: 
+	+ Store & handle sensitive data ~"securely". 
+	+ API tokens, personal access tokens, SSH keys, certificates. 			// NEVER give Jenkins a real personal password. 
+	+ Scope: 
+		- Global: available to all jobs. 
+		- System: limited specific domains. 
+		- User. 
+	+ Example: 
+		- Create: 
+			; Manage Jenkins > Credentials > (global) > Create. 
+			; Kind: Username with password. 
+			; Scope: Global. 
+			; Username: ec2-user. 
+			; Password: **** 					// Not a real personal password. 
+			; ID: server-creds. 
+		- Use: 
+			; All stages: 
+				pipeline {
+					environment { 
+						SERVER_CREDS = credentials('server-creds')
+				...
+					echo "${SERVER_CREDS_USR}"		// ec2-user. 
+			; One stage, with Credentials Binding plugin: 
+				steps {
+					withCredentials([usernamePassword(credentialsId: 'server-creds', usernameVariable: 'user', passwordVariable: 'passw')]) {
+						echo "${user} -> ${passw}"
+
+
+* Nested & parallel stages: 
+	+ Nested:
+		pipeline {
+			stages {
+				stage('Containerization') {
+					stages {
+						stage('Build Docker image') {
+							....
+						stage('Push Docker image') {
+							...
+	+ Parallel: 
+		parallel {
+			stages { 	//optional. 
+				... 
+
+
+* Options: 
+	+ Examples: 
+		pipeline {
+			options {
+				timeout(time:1 unit: 'HOURS') 
+				skipDefaultCheckout() 
+				retry(2) 
+
+
+* Parameters: 
+	+ Pass in key-value pairs as we execute a build. 
+	+ Example: 
+		- ENV=Staging 
+		- RUN_TESTS=False 
+	+ Use: 
+		pipeline {
+			parameters {
+				string(name: 'ENV', defaultValue: 'dev', description: 'Deploy to dev|prod|other/custom (specify). ')
+				booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Test app? (Takes ~1h). ')
+			}
+			stages {
+				stage('Test') {
+					when { expression { params.RUN_TESTS == true }} 
+					steps { 
+						...
+				stage('Deploy') {
+					steps {
+						echo "Deploying to ${params.ENV} env. "
+						...
+	+ Then click on "Build with Parameters" option in Jenkins UI. 
+
+
+* Input: 
+	+ Allows manual intervention, e.g. for approval. 
+	+ Example: 
+		stage('Deploy') {
+			input {
+				message "Proceed with deployment? "
+				ok "Yes" 
+				// Default negative message: "Abort". 
+			}
+			steps {
+				...
+
+
+
+* Single Server Deployment: 
+	+ Our app runs on a single server. 			// Consider question Q2. 
+	+ It can be a: 
+		- VM (Virtual Machine), like a DigitalOcean droplet, EC2 instance on AWS. 
+		- Physical on-prem. 
+	+ Continuous Deployment: after all tests pass, get the code & update the server that's running our app so it has the newest version.  
+	+ Process: 
+		- Initial setup (manual): 
+			// Prerequisites: already have an AWS account, and an SSH key pair. 
+			~ Log into AWS Console (web UI). 
+			~ Launch an EC2 instance. 
+			~ Connect to it with SSH. 
+			~ Create a folder for our app. 
+			~ Create Python virtual environment. 
+			~ Set our app up as a Linux service: 
+				` Create a systemd unit file. 
+				` Reload systemd. 
+				` Enable & start service. 
+			~ Configure firewall to allow port 5,000. 
+		- Update pipeline to automate this process. 			// Obviously test it by pushing changes and actually accessing the app on your web browser. 
+
+
+
+* Serverless: 
+	+ WHY serverless: 
+		- Having an Ops/Infra team that takes care of these tasks, costs money: 
+			~ Provision EC2 instances. 				// Or even worse: managing physical on-prem servers! 
+			~ Select correct AMIs. 
+			~ Install dependencies. 
+			~ Secure it: firewalls, users, groups, permissions, IAM Roles. 
+			~ Copy app code over. 
+			~ Apply OS patches, apply code bug fixes, routine maintenance. 
+			~ Monitoring MEM, CPU usage, network traffic. 
+			~ Scale up to handle traffic spikes/increase. 
+			~ Scale back down during low traffic windows. 
+	+ AWS Lambda: 
+		- "Just write your code, upload it, let the Cloud take care of everything else." 
+		- Compute service that lets us run code without having to provision or manage servers. 
+		- AWS manages underlying infra: 
+			~ Server maintenance. 
+			~ Scaling. 
+			~ Capacity provisioning. 
+			~ Logging. 
+		- Trigger (event): when should code run. 
+		- Cost: 
+			~ # of function requests. 
+			~ Amount of compute time they consume. 
+		- Can be containerized BUT we can't use any Docker image, it must be compatible with Lambda: must implement AWS Lambda runtime API. 
+		- Even-Driven-Workflow: user uploads file to S3 bucket -> Lambda gets triggered. 
+		- Build APIs: combine with APIGW. 
+		- Microservices Architecture. 
+		- Function gets access to: 
+			~ Event object. 				// ARN of file uploaded by user to bucket. 
+			~ Context object. 				// Function version. 
+		- Increase perf: give it more MEM (CPU also goes up). We pay more. 
+		- When we create a new Lambda function, a new IAM Role is also created for it. It allows it to write logs to CloudWatch. 
+	+ Serverless Application Model (SAM) (CloudFormation (IaC)): we'd use it in a real PROD env. 
+	+ Deploy to Lambda: 
+		- $ aws lambda update-function-code --function-name %%% --zip-file %%% 
+	+ Jenkins pipeline: 
+		- AWS credentials. 
+		- Zip code. 
+		- Deploy to Lambda. 
+	// Note: getting the Flask app to work with Lambda is beyond the scope of this course. 
+
+
+
+
+* Docker: 
+	+ Container: take everything that your app needs to run (source code, dependencies) and store them in a standardized box. 
+		- Once deployed, no need to configure anything, app just runs. 
+	+ Why we NEED it: 
+		- A Docker container can run on any machine that has Docker installed. 
+		- Isolation: run multiple apps in a single machine without worrying about dependency conflicts. 
+		- Lighter weight than VMs. Boot up faster. 
+		- Portable: build image, push it to registry, pull it on the target machine. 
+		- Easy to scale up. 
+	+ Workflow: 
+		0.- Code your app. 
+		1.- Package it by writing a Dockerfile: instructions to create a Docker image: blueprint for creating containers. 
+		2.- Run a container specifying the image. 
+		3.- Push image to registry, like Docker Hub. 
+		4.- Staging server pulls image. 
+	+ Dockerfile: 
+		FROM python:3.12.0b3-alpine3.18 				# baseimage:tag 
+		COPY . /app 
+		WORKDIR /app 
+		RUN pip install --no-cache-dir -r requirements.txt 			# Executed during build. 
+		EXPOSE 5000 						# Documentation only. 
+		CMD ["python", "app.py"] 					# Executes during container start. 
+	+ Docker CLI: 
+		# Go to hub.docker.com/explore and find a public base image. 
+		- $ docker build -t my-flask-app:v1 .			# -t: tag, . = path to Docker file is "here". 
+		- $ docker image ls 
+		- $ docker run my-flask-app:v1 
+		- Go to Docker Hub and log in. 
+		- Create repository: jenkins-flask-app. Copy "push" command. 
+		- $ docker login 					# Provide username & password. 
+		- $ docker image tag my-flask-app:v1 <user/repo>:v1 
+		- $ docker push <IMAGE> 
+		- Confirm v1 tag has been uploaded to repo. 
+	+ Configure Jenkins pipeline: 
+		- Install Docker in Agent. 
+		- Create PAT and create Jenkins credentials: your personal username + token. 
+		- Jenkinsfile: 
+			... 
+			environment {
+				IMAGE_NAME = "${DOCKERHUB_USERNAME}/jenkins-flask-app" 
+				IMAGE_TAG = "${IMAGE_NAME}:${env.GIT_COMMIT}" 
+			}
+			... 
+			withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'USER', passwordVariable: 'TOKEN')]) {
+				sh " echo ${TOKEN} | docker login -u ${USER} --password-stdin " 
+				sh " docker build -t ${IMAGE_TAG} "
+				sh ' docker images '
+				sh " docker push ${IMAGE_TAG} "
+			} 
+
+
+
+
+
+
+* Kubernetes (K8): 
+	+ Challenges when deploying containerized apps: 
+		- We need to deploy containers to multiple hosts to avoid single point of failure. 
+		- We need load balancing so that when a user sends a request, one of the containers serves it. 
+		- We need networking between the containers/hosts. 
+		- We need to restart containers when they fail (go down). 
+		- We need to migrate existing containers to a healthy host, if a host fails. 
+		- We need to dynamically scale when traffic spikes occur. 
+	+ That's why a Container Orchestrator is necessary. 
+	+ Responsibilities: 
+		- Deploy containers across available servers/hosts. 
+		- Load balancing. 
+		- Networking. 
+		- Restarting failed containers. 
+		- Moving containers when a host fails. 
+	+ Other COs: Apache Mesos, ECS. 
+	+ K8 is the most popular OSS. 
+	+ Cluster has 2 types of nodes: 
+		- Control Plane: cluster managers. 
+		- Worker Nodes: run containers. 
+	+ Admins are responsible for managing both, which is really hard. 
+	+ That's why AWS Elastic K8 Service (EKS) was created. 
+	+ EKS: 
+		- Managed K8 service. 
+		- AWS manages the Control Plane for us. 
+		- Provision it, scale it, make it HA (highly available). 
+		- We are only responsible for Worker Nodes (unless we go with Fargate). 
+		- Across AZs (Availability Zones). 
+		- IAM for authentication. 
+		- ELB (Elastic Load Balancer). 
+		- ECR (Elastic Container Registry) for container images. 			// So instead of Docker Hub. 
+	+ Deploying to K8: 
+		- We don't actually deploy containers, but Pods: 1 or more containers. 
+		- We define Pods in YAML: 
+			kind: Pod
+			spec: 
+				containers: 
+					- image: flask-app 
+		- CLI: kubectl. 							# $ kubectl apply -f pod.yaml 
+		- BUT we don't even deploy Pods directly. We wrap them in a Deployment. 
+			~ Deployments: 						# $ kubectl apply -f deployment.yaml 
+				` Watch over our Pods, and restart them when they fail. 
+				` Scale number of Pods. 
+				` Upgrade & rollback. 
+				` Define: 
+					kind: Deployment 
+					spec: 
+						replicas: 3 			# Number of Pods. 
+						template: 
+							spec: 
+								containers: 
+									...
+		- Multiple clusters (e.g.: DEV, PROD): 
+			~ To connect to and authenticate with K8 clusters: kubeconfig file. 
+			~ Default location: $HOME/.kube/config. 
+			~ clusters: 
+				- cluster: 
+					server: <IP>:<PORT>
+				   name: DEV 
+			   contexts:
+				- context: 
+					cluster: DEV
+					user: admin
+				  name: marq@DEV 
+			   current-context: DEV			# This is how I connect to the cluster. 
+			   users: 
+				- name: admin
+			~ Env var: KUBECONFIG. 
+			~ CLI: $ kubectl --kubeconfig <PATH/TO/FILE> 
+			~ Switch between clusters: $ kubectl config use-context PROD 
+	+ General process of setting up EKS: 
+		- Create 2 clusters on EKS: prod, staging. 
+		- Install kubectl CLI locally. 
+		- Configuration YAML file (~/.kube/config) should contain: 
+			~ 2 clusters: prod, staging. 
+			~ 1 user: user. 
+			~ 2 contexts: user@prod, user@staging. 
+			~ Current context: user@prod. 
+		- List nodes: 
+			~ $ kubectl get nodes 
+		- Folder k8s should contain: 
+			~ deployment.yaml: 
+				---
+				apiVersion: apps/v1 
+				kind: Deployment 
+				metadata:
+				  name: flask-app 
+				spec:
+				  replicas: 2
+				  selector: 
+				    matchLabels:
+				      app: flask-app 
+				  template:
+				    metadata:
+				      labels:
+				        app: flask-app 
+				    spec:
+				      containers: 
+				      - name: flask-app 
+				        image: marq4/jenkins-flask-app:v3 
+				        resources: 
+				          limits:
+				            memory: "128Mi"
+				            cpu: "500m"
+				        ports: 
+				          - containerPort: 5000 
+			~ service.yaml: 					# To be able to test with web browser. It will load balance traffic to our flask-app container. 
+				---
+				apiVersion: v1
+				kind: Service 
+				metadata: 
+				  name: flask-app-service 
+				spec: 
+				  type: LoadBalancer 
+				  selector: 
+				    app: flask-app 
+				  ports: 
+				  - port: 5000 
+				    targetPort: 5000 
+		- Confirm we will execute commands against staging env: 
+			~ $ kubectl config current-context 
+		- Deploy: 
+			~ $ kubectl apply -f k8s/ 
+			~ $ kubectl get deployment 
+			~ $ kubectl get pods 
+			~ $ kubectl get svc 
+		- Copy the DNS name or IP under EXTERNAL-IP for flask-app-service LoadBalancer. 
+		- Paste it in your web browser + :5000. We should be able to see the app running. 
+		- Deploy to prod: 
+			~ $ kubectl config get-contexts 
+			~ $ kubectl config use-context user@prod... 
+			~ $ kubectl apply -f k8s/ 
+		- Suppose you make changes the app and want to test them before setting up CICD pipeline: 
+			~ Build Docker image. 
+			~ Push it to Docker Hub. 
+			~ Edit deployment.yaml: update tag version of the image under containers list. 
+		- But with Jenkins we would instead do: 
+			~ $ kubectl set image deployment/flask-app flask-app=marq/jenkins-flask-app:v5 
+	+ K6: 
+		- Tool to mimic user traffic. 
+		- We can use it to see how well our web app is functioning by having it send requests. 
+		- Logic defined under acceptance-test.js. 
+		- Get URL: $ kubectl get svc flask-app-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].port}' 
+		- Pass it: $ k6 run -e  SERVICE=<dns name> acceptance-test.js 
+	+ Configure the pipeline to deploy to EKS: 
+		- Create KUBECONFIG credentials in Jenkins (secret file). 
+		- Provide AWS credentials for EKS: 
+			environment {
+				KUBECONFIG = credentials('kubeconfig-creds') 
+				AWS_ACCESS_KEY_ID = credentials('aws-access-key') 
+				AWS_SECRET_ACCESS_KEY = credentials('aws-access-key') 
+			}
+		- Set write permissions to kubeconfig file: 
+			sh ' chmod 644 ${KUBECONFIG} '
+			sh ' ls -la ${KUBECONFIG} '
+		- Deploy to staging: 
+			sh """
+				kubectl config use-context user@staging... 
+				kubectl config current-context 
+				kubectl set image deployment/flask-app flask-app=${IMAGE_TAG} 
+			"""
+		- Acceptance test: 
+			script {
+				def service = sh(script: " kubectl get svc flask-app-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}:{.spec.ports[0].port}' ", returnStdout: true).trim() 
+				echo "${service}" 
+				sh " k6 run -e SERVICE=${service} acceptance-test.js "
+			}
+		- Deploy to prod: 
+			sh """
+				kubectl config use-context user@prod 
+				kubectl config current-context 
+				kubectl set image deployment/flask-app flask-app=${IMAGE_TAG} 
+			"""
+
+
+
+
+
+
+
+* Final Project: Advanced Pipelines with complex logic: 
+	+ 2 Jenkinsfiles that handle 2 cases: 
+		- Code quality. 
+		- Deploying a Release to PROD. 
+	+ We'll imagine that when a developer wants to make changes to the code base: fix a bug, add a new feature; 
+		they'll create a new branch. 
+		- Then, in order to merge to main, they'll open a PR. 
+	+ PRs will trigger the Code Quality pipeline. 
+		- Then, the team lead will manually review, approve, and merge to main. 
+	+ Merge to main will trigger the Release Pipeline, which will: 
+		- Bump Semantic Version. 
+		- Git Tag & Git Release. 
+		- Dockerize. 
+		- Deploy to K8. 					// Don't panic, we'll simply echo out the kubectl commands, not actually spin up any EKS clusters. 
+	+ Semantic Versioning (SemVer): 
+		- In software development there must be a versioning system, for some reasons: 
+			~ Communicate to users and other developers what kind of changes to expect. 
+			~ Dependency management. 
+			~ Create a timeline to track changes over time. 
+		- SemVer is widely used. 
+		- It uses 3 numbers: MAJOR.Minor.patch. 
+			~ Major version change usually involve breaking changes. 
+			~ Patch: bug/vulnerability fixes. 
+		- In this project we use a tool called Conventional Commits. 
+			~ It determines which number to bump up based on the commit message: 
+				; "fix: ...": patch. 
+				; "feat: ...": minor. 
+				; "feat!: ...": major. 
+	+ Poetry is a dependency management and packaging tool for Python projects. 
+		- Advantages: 
+			~ Uses pyproject.toml file to track the project's dependencies in a single place, while separating dev dependencies (like pytest) from prod dependencies. This is cleaner than maintaining multiple requirements files. 
+			~ Automatically creates virtual environments. 
+		- Commands: 
+			~ Install project dependencies including optional "dev" group: 
+				$ poetry install --with dev 
+			~ Run tests within Poetry's venv with correct versions of packages: 
+				$ poetry run pytest 
+	+ Code Quality pipeline: 
+		- Run stage either when a push is made to any branch EXCEPT main; and for PRs: 	// PRs are for main. 
+			when {
+				changeRequest( target: 'main' )
+			}
+				${CHANGE_ID}  # Pull Request number. 
+		- Install dependencies, run tests. 
+	+ Release pipeline: 
+		- We need a GitHub token so Jenkins can create the Git Tag & Git Release. 
+		- Runs twice: 
+			~ First time: 
+				; Check if there's a Git Tag to this commit: 
+					script {
+						def tag = sh(returnStdout: true, script: 'git tag --contains').trim() 
+						// If tag is not null, assign it to an env var: env.GIT_TAG = tag. Else assign empty string. 
+						// Set env var IMAGE_TAG_RELEASE to IMAGE_NAME:GIT_TAG. 
+					}
+				; If there is no Tag, create a Git Release: 
+					when { expression { return env.GIT_TAG == '' } }
+					script {
+						# Get next version numbers: 
+						def tag = sh(returnStdout: true, script: ' poetry run semantic-release version ').trim() 
+						# Create new tagged commit & Release: 
+						sh ' poetry run semantic-release publish ' 
+					}
+				; That new tagged commit then has to be manually merged into main. 
+			~ Second time: 
+				; Now there's a tag, so this evaluates to true: 
+					when { expression { return env.GIT_TAG != '' } } 	// Tag is not empty. 
+				; Proceed to "Build & Deploy to PROD" phase: 
+					` Sub-stages: 
+						° Docker: 
+							§ Tag the image twice: docker build -t ${IMAGE_TAG} -t ${IMAGE_TAG_RELEASE} .  
+							§ Push all tags: docker push --al-tags ${IMAGE_NAME} 
+						° Deploy to PROD (K8). 
