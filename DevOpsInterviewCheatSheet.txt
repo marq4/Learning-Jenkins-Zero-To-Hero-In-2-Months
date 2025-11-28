@@ -1,0 +1,457 @@
+* How does Jenkins work?
+Ans: 
+	1.- SW developers regularly push code changes to a VCS, for example Git + GitHub Repo. 		// SoftWare, Version Control System, repository. 
+	2.- Jenkins notices the change, and pulls/clones the repo. 
+	3.- Attempts to build/compile the code. 
+	4.- If Build fails, Jenkins alerts the team. 
+	5.- If Build SUC, and subsequent stages in the Pipeline SUC complete, Jenkins will automatically deploy
+		the code to the required targets (servers), e.g.: an EC2 instance. 
+	6.- Notifies team about success. 
+	// This way, Jenkins keeps code fresh in PROD with minimal manual intervention. 
+
+* Tell me about some Pro's and Con's of Jenkins: 
+Ans: 
+	+ Pro's: 
+		- Free OSS: no licensing costs!									// Open-Source SW. 
+		- Highly customizable: with a bast library of plugins it can be tailored to almost any SW dev env. 
+		- Scriptable: for advanced automation. 
+		- Pipeline as Code: for version control and collaboration. 
+		- Mature and feature rich. 
+		- Horizontally scalable. 
+	+ Con's: 
+		- Harder to learn compared to newer, cooler alternatives. 
+		- Maintenance overhead to keep it and its plugins up to date. 
+		- Performance considerations as projects grow. 
+		- Security is our responsibility. 
+		- Hosting required!
+
+
+* 3 challenges when there is no CI (Continuous Integration): 
+Ans: 
+	+ Delayed testing: late in the dev cycle, after multiple merges to MAIN from bug/feature branches. 
+	+ Inefficient deployment: deploying code to various environments relies on manual processes. 
+	+ Quality assurance: reliant on manual testing, prone to human error. 
+
+
+* How would you tell Jenkins to build a job every day at 1am but only if code changed that day? 
+Ans: 
+	+ Using Poll SCM with a daily schedule: 
+		triggers {
+			pollSCM('H 1 * * *')
+		}
+	+ This polls source control at 1am and only triggers a build if changes are detected. 
+
+
+
+
+* What are the differences between node, executor, agent; or are they the same thing? 
+Ans: 
+	+ Jenkins leverages a DISTRIBUTED architecture. 
+	+ The CONTROLLER NODE is where we define Jobs and Pipelines using the UI, CLI, or REST API. 
+	+ In a basic setup with a single node, the Controller is also the worker node. 
+	+ The Controller identifies available Executors on connected Nodes and then schedules 
+		and distributes Jobs on them. 
+	+ So Nodes are the worker machines that execute Build Jobs. They connect to the Controller via SSH | JNLP. 
+	+ Each Node has 1 or more Executors. 
+	+ An Executor is a thread for execution of tasks. 
+	+ The Agent acts as an extension of Jenkins. Manages task execution. Defines communication protocol & authentication with Controller. 
+
+
+* Suppose you want to test out Jenkins on an EC2 instance. What would you recommend as the bare minimum specs? 
+Ans: 
+	+ CPU cores: 2. 
+	+ RAM: 256 MB. 
+	+ Disk: 1 GB. 
+* What about for a small team, or a personal project in production? 
+Ans: 
+	+ CPU cores: 4. 
+	+ RAM: 4 GB. 
+	+ Disk: 50 GB. 
+
+* Something goes wrong. Where would you quickly look? 
+Ans: 
+	+ Dashboard > Manage Jenkins > System Log > All Jenkins Logs. 
+
+* You’re working in a CICD Pipeline where multiple Jenkins jobs are chained together. 
+Job A builds a jar artifact, job B runs integration tests using that artifact, job C deploys it to STAGING env. 
+During testing, QA team reports a bug that only appears in STAGING, but not in DEV. 
+Q: How would you determine which exact build artifact ended up in STAGING? 
+Ans: 
+	+ Fingerprints uniquely identify artifacts across Jenkins jobs. 
+	+ Go to deployment project (C) and check the fingerprint of the .jar that was deployed. 
+	+ Take note of which specific job originally created it. 
+	+ Verify that the integration test project (B) really did test this particular artifact. 
+	+ Of course we would have had to enable fingerprints beforehand. 
+
+
+* You just installed Jenkins on an Ubuntu server, however when you try to start the service it fails with: 
+	java.io.IOException: Failed to bind to 0.0.0.0/0.0.0.0:8080 
+What do you do? 
+Ans: 
+	+ We need to specify another port for Jenkins to bind to: 
+		- Look at the logs: 				$ sudo journalctl -u jenkins 
+		- Edit default file: /etc/default/jenkins 
+		- Edit service file: /lib/systemd/system/jenkins.service 
+		- Reload daemon to apply changes: 		$ sudo systemctl daemon-reload 
+		- Start the service: 				$ sudo systemctl start jenkins 
+		- Verify status: 				$ sudo systemctl status jenkins	# enabled, active (running). 
+
+
+
+* What are the keywords used to define a Pipeline in a Jenkinsfile? 
+Ans: 
+	// Mention that these are for Declarative Pipeline. 
+	+ pipeline. 
+	+ agent. 
+	+ stages. 
+	+ stage. 
+	+ steps. 
+
+* What are the benefits of Pipeline projects over Freestyle? 
+Ans: 
+	+ Code as Configuration: defined in Jenkinsfile which can be stored alongside project's code. 
+	+ Resilient: can survive unexpected restarts of Controller. 
+	+ Human interaction integration: can be paused, allow for manual approval. 
+
+* Write a Jenkinsfile that defines a Pipeline with these specifications: 
+	+ Stages: Building, Unit Testing, Deployment. 
+	+ Any agent except for 'Building' which must run in Docker, image: maven:3.9-eclipse-temurin-17. 
+	+ Building: Maven: clean package. 
+	+ UT: use JUnit plugin, path: 'target/surefire-reports/*.xml' 
+	+ Deploy using 'deploy.sh' script but ONLY for the main branch. 
+Ans: 
+	pipeline {
+		agent any 
+		stages {
+			stage('Building') {
+				agent {
+					docker 'maven:3.9-eclipse-temurin-17'
+				}
+				steps {
+					sh 'mvn clean package' 
+				}
+			}
+			stage('Unit Testing') {
+				steps {
+					script {
+						junit 'target/surefire-reports/*.xml' 
+					}
+				}
+			}
+			stage('Deployment') {
+				when { expression { branch == 'main' } }
+				steps {
+					sh 'deploy.sh' 
+				}
+			}
+		}
+	}
+
+
+
+* Do you know what OS is used for the official Jenkins Docker image? 					// Operating System. 
+Ans: 
+	+ Debian. 
+	+ To figure it out I did: 
+		- Run a container for the latest LTS Jenkins: 					// Long-Term Support. 
+			$ docker run -d -v C:/Jenkins/jenkins_home:/var/jenkins_home jenkins/jenkins:lts 
+		- Connect to the container: 
+			$ winpty docker exec -it 69 bash 
+		- Get info on release: 
+			$ cat /etc/*release* 
+
+
+* Suppose that the Jenkins Controller restarts while a Pipeline job is running. What happens? 
+Ans: 
+	+ Unlike a Freestyle job that would be interrupted and fail, a Pipeline job will pause (sleep) 
+		and resume once the Controller comes back. 
+
+
+
+* What is Blue Ocean and why do the pros use it? 
+Ans: 
+	+ A collection of plugins that provide an enhanced UX. 
+	+ It offers: 
+		- Visual Pipeline editor: no need to write Groovy code, just copy-paste into your Jenkinsfile. 
+		- Clean, modern visualization of stages and steps. 
+		- Improved clarity: each step in the Pipeline is clearly visible with its logs, making debugging much easier. 
+		- Native integration with Git. 
+	+ Once you get used to it, you can't go back. Specially when something fails, it is SO easy to spot 
+		the error message as compared to the default "Console Output" in regular Jenkins. 
+	+ It is worth mentioning that in 2019 CloudBees announced that Blue Ocean will not receive further functionality or enhancement updates. 
+
+
+* Get all the details of a parameterized project using the REST API: 
+Ans: 
+	+ Go to the Jenkins Dashboard (bottom) > REST API to see the documentation. 
+	+ Try it: 
+		$ curl http://JENKINS_URL:8080/api/json 
+	+ Returns: Authentication required. 
+	+ Go to Admin user > Configure > API Token > create a new one and copy the value. 
+	+ So add -u user:<TOKEN> to the curl command. 
+	+ Pipe to jq for pretty print. 
+	+ Find the relevant project and copy the URL. 
+
+* Now build it from a shell using the REST API passing the params: 
+Ans: 
+	// Go to Admin user > Configure > API Token > create a new one and copy the value if needed. 
+	+ $ curl -X POST -u user:<TOKEN> http://JENKINS_URL:8080/job/<PROJECT_NAME>/buildWithParameters \
+		-d BRANCH_NAME=dev -d APP_PORT=6767 
+
+
+* You are a Jenkins admin. Your manager is concerned about Cross-Site Request Forgery. What do you do? 
+Ans: 
+	+ Without XSRF protection, a Jenkins user visiting another website would allow it's operator 
+		to perform actions in Jenkins. 
+	+ Jenkins uses a "crumb", a token that is created by Jenkins and provided to the user. 
+	+ It is enabled by default. To verify go to: Manage Jenkins > Security > CSRF Protection. 
+	+ The "Default Crum Issuer" encodes this information in the hash: 
+		- User name. 
+		- Web session ID. 
+		- IP address. 
+		- A salt unique to our Jenkins instance. 
+
+
+* What happens when you run 2 stages in parallel and one of them fails? 
+Ans: 
+	+ The other one continues executing. 
+	+ Next stages are skipped. 
+	+ The overall job is marked as failure. 
+
+
+* For simple testing it is fine to create projects individually, and run jobs manually. 
+How do we take this to the next level, where we need to manage multiple code repos, with multiple branches? 
+Ans: 
+	+ By using Organization Folders we get a ton of advantages: 
+		- Automatic scan & discovery of all repos under the GitHub org, Bitbucket team, or GitLab group. 
+		- Automatic creation of a Pipeline project per Jenkinsfile found. 
+		- Automatic creation of new Jenkins Projects when new repos are added. 
+		- Automatic deletion of Jenkins Projects when code repos (or Jenkinsfile) are deleted. 
+		- Discovers & builds all branches. 
+		- Can auto build Pull Requests. 
+		- Each branch gets its own sub-project. 
+		- Scales to hundreds of repos. 
+		- Easy to enforce org standards & policies across repos. 
+	+ One caveat is that all Jenkinsfiles must be in predictable locations (usually at the root of the repo). 
+	+ Example to set it up for a NodeJS app that's part of a GitHub Organization: 
+		1.- Jenkins Dashboard > New Item > Organization Folder. 
+		2.- Create a GitHub Personal Access Token (PAT) with scopes: 
+			+ repo. 
+			+ admin:repo_hook. 
+			+ read:user. 
+			+ user:email. 
+			+ read:org. 
+		3.- Manage Jenkins > Credentials > Global > Username with password > paste token value. 
+		4.- Organization Folder > Repository Sources > Add > GitHub Org. 
+			+ Select those credentials. 
+			+ Owner: GitHub Org. 
+
+
+
+* What are some limitations of SonarQube community edition and why many teams in the real world 
+use it anyway? 
+Ans: 
+	+ Only analyzes the main branch. 
+	+ Code coverage is only available for new code. 
+	+ New code focus is often more valuable than trying to fix years of technical debt all at once. 
+	+ Catch issues before they affect PROD without overwhelming devs with noise from feature branches. 
+
+
+
+
+* What is Integration Testing? 
+Ans: 
+	+ A stage where the software components are combined and tested together. 
+	+ Main goal: verify that these integrated components/modules work correctly when interacting with each other. 
+
+
+
+* Suppose you join a team that has adopted the GitOps philosophy. 
+You are tasked with the migration of a Git repo that contains a K8 Manifest. 
+You notice that the Manifest includes a secret: the MongoDB credentials. 
+You are aware that in GitOps, the Git repo is the source of truth. 
+How do you include these credentials in the repo without exposing any secrets? 
+Ans: 
+	+ In the deployment.yml I see: 
+		spec: 
+		  template:
+		    spec:
+		      containers:
+		        - name: solar-system 
+		          envFrom:
+		            - secretRef:
+		                name: mongo-db-creds 
+	+ BUT the repo only contains that YAML + service.yml. 
+	+ Supposing K8 is running in the Cloud and we already have the tools installed. 
+	+ Get the Namespace: 
+		- $ kubectl get ns 
+		  # solar-system 
+	+ Get the Nodes: 
+		- $ kubectl get node -o wide 
+		  # Verify nodes are running. 
+	+ Dry-create a K8 Secret and output to a YAML file: 
+		- $ kubectl -n solar-system create secret generic mongo-db-creds --from-literal=MONGO_URI=mongodb+srv://supercluster.XYZ.mongodb.net/superData --from-literal=MONGO_USERNAME=superuser --from-literal=MONGO_PASSWORD=SuperPassword --save-config --dry-run=client -o yaml > only_encoded_secret_DONOTSHARE.yml 
+	+ Values are base64 encoded so we need to encrypt them before uploading to the repo. 
+	+ Supposing we already have a Bitnami Pod running: 
+		- $ kubectl -n kube-system get pods 
+		  # bitnami-sealed-secrets 1/1 Running 
+	+ Supposing we already have TLS set up:
+		- $ kubectl -n kube-system get secrets 
+		  # sealed-secrets-key-XYZ kubernetes.io:tls 
+	+ Get certificate: 
+		- $ kubectl -n kube-system get secrets sealed-secrets-key-XYZ -o json | jq -r .data'."tls.crt"' | base64 -d > sealed-secret-public-cert.crt 
+		- $ cat sealed-secret-public-cert.crt 
+	+ Create encrypted secret: 
+		- $ kubeseal --version 
+		- $ kubeseal -o yaml --scope cluster-wide --cert sealed-secret-public-cert.crt < only_encoded_secret_DONOTSHARE.yml > mongo-creds-sealed-enc-secret.yml 
+	+ Add it to the repo: 
+		- $ cp mongo-creds-sealed-enc-secret.yml solar-system-gitpos-argocd/secret.yml 
+		- $ git status 
+		- $ git add secret.yml 
+		- $ git commit -am "Sealed encrypted MongoDB credentials. " 
+		- $ git push 
+
+
+
+
+* What are some plugins that you recommend as a Jenkins admin and/or that you have used in production? 
+Ans: 
+	+ Emotional Jenkins: because we have a sense of humor. 
+	+ Build Monitor View: to quickly see if something broke, specially the daily. 
+	+ Job Config History: in case a project is deleted by mistake. 
+	+ Matrix Authorization Strategy: for fine-grained access control. 
+	+ Blue Ocean: for easier debugging. 
+	+ Pipeline Stage View / Pipeline Graph View: clear stage UI. 
+	+ Build Timeout: prevent hung executors. 
+	+ Credentials Binding + SSH Agent: safe credential injection into steps. 
+	+ Audit Trail: who changed what and when. 
+	+ HashiCorp Vault: to fetch secrets at build time, don’t store in Jenkins. 
+	+ Slack Notification: to act quickly when an important Build fails. 
+	+ Multibranch Scan Webhook Trigger: trigger Pipeline immediately after git push. 
+	+ OWASP Dependency-Check: scan (code) project dependencies for known security vulnerabilities (CVEs). 
+	+ JUnit: see test results. 
+	+ SonarQube Scanner: code coverage. 
+	+ Docker Pipeline: build, run, push Docker images from Jenkinsfile. Use Docker containers as Agents. 
+	+ JCasC (Jenkins Configuration as Code): manage Jenkins configuration with YAML files. 
+
+
+
+
+* Suppose your team is finally ready to move away from the single-node Jenkins architecture, 
+where the Controller Node is also the Worker Node. 
+A VM has been provisioned and you are tasked with setting it up as an Agent. 
+When you log into the Jenkins UI, go to Manage Jenkins > Node > New Node, 
+what type of Agent are you creating? 
+Ans: 
+	+ Permanent. 
+	+ When we manually create a Node through the Jenkins UI, we crate a permanent Agent, 
+		there are no other options. This is clear from the UI itself but it is funny that you still 
+		need to select the only option available, after giving it a name. 
+	+ It is called "permanent" because it is a static, manually configured Agent, 
+		that remains registered with the Jenkins Controller until we explicitly remove it. 
+	+ The other Agent "types", like Docker or Cloud-based, are provisioned dynamically through plugins 
+		(such as Docker or EC2). These ephemeral Agents are created on-demand 
+		and typically destroyed after use. 
+	+ Label-based isn't really a separate type, but a method of organizing and selecting Agents. 
+		Any Agent, permanent or dynamic, can (and should) have labels assigned to it. 
+		Labels are then used in Pipeline definitions to route jobs to appropriate Agents. 
+
+
+
+
+
+* Your team is using K8 Pods as Jenkins Agents to run containerized jobs. 
+Your manager has asked you to review the set up, take a look at the jobs, and understand 
+what happens after you click "Build Now" up to the point where the job completes. 
+Describe the lifecycle: 
+Ans: 
+	1.- Jenkins requests K8 to create a Pod. 
+	2.- K8 spins up the containers. 
+	3.- Jenkins connects to the Pod Agent. 
+	4.- Build runs inside container. 
+	5.- Pod is deleted after completion (even in case of failure). 
+
+
+
+
+* Suppose we need to share a file across stages, with different Nodes in a a Pipeline. 
+What is a very simple, straightforward way to do that? 
+Ans: 
+	+ Use the stash step when the files are created:
+		- stash name: 'project-dependencies' includes: 'node_modules/' 
+	+ Use them later: 
+		- unstash 'project-dependencies' 
+
+
+
+
+* Is there any use case or requirement where using a Declarative over a Scripted Pipeline is recommended 
+that you can think of? Supposing we have the programming skills. 
+Ans: 
+	+ If being able to restart from a specific stage is CRITICAL for the project, then 
+		Declarative Pipelines are recommended as they have better support, 
+		the UI is more intuitive, and are more reliable. 
+	+ We need to be careful that our Scripted Groovy Pipeline does not become so complex 
+		that we need CICD for it, because then we'd have a Pipeline for the Pipeline! 
+
+
+
+
+
+* A job using a K8 Pod Agent is failing. You click "Test Connection" in the K8 Cloud configuration page (in Jenkins) 
+and get a 403 error, but can't determine the cause. 
+What's your troubleshooting approach?
+Ans: 
+	+ Enable detailed logging: 
+		- Manage Jenkins > System Log > Add new recorder. 
+		- Search for "kubernetes" and 	add Logger. Level: ALL. 
+	+ Test Connection again. 
+	+ Reload log page and review the logs. 
+	+ Common 403 causes: 
+		- Service Account permissions. 
+		- Incorrect Namespace. 
+		- Wrong token. 
+		- Problem with API endpoint authentication. 
+	+ After resolving the issue clear log entries and delete the recorder. 
+
+
+
+
+
+
+
+* What is JCasC? 
+Ans: 
+	+ Jenkins Configuration as Code is a plugin to manage Jenkins configuration with YAML files, 
+		instead of clicking through Jenkins web UI. 
+	+ Benefits: 
+		- Version control (Git). 
+		- Recreate identical Controllers. 
+	+ Note: in reality though, in large organizations, you may be provided pre-configured, standardized 
+		Jenkins instances on demand by a specialized team: JMaaS (Jenkins Master as a Service). 		// "Controller" is the new name for "Master". 
+
+
+
+
+
+
+
+
+
+
+* Your main branch builds take 2 hours and must survive controller failures, but feature branch builds are too slow. 
+How do you configure this? 
+Ans: 
+	+ Configure Pipeline Durability/Speed setting depending on branch name. 
+	+ This controls how frequently Jenkins persists Pipeline state to disk. 
+	+ Modify global default  (MAX_SURVIVABILITY, slowest) to Performance-optimized: 
+		- Manage Jenkins > System. 
+		- Under "Pipeline Speed / Durability" > Default Speed / Durability Level. 
+		- This way feature branches build twice as fast, but must restart over if Controller restarts. 
+	+ Set "main" critical branch to MAX_SURVIVABILITY: 
+		- Multibranch Project > under "Property strategy". 
+		- Select "Named branches get different properties". 				// Or whatever wording your version of Jenkins has. 
+		- Exceptions. 
+		- Branch name: "main". 
+		- Properties > Custom Branch Speed/Durability Level: select "Maximum survivability/durability but slowest". 
+		- This way main branch critical build can resume from last checkpoint if Controller restarts. 
